@@ -31,6 +31,16 @@ export function formatDate(d: string | null): string {
   }).format(date);
 }
 
+export function formatLongDate(d: string | null): string {
+  if (!d) return "—";
+  const date = new Date(d + "T00:00:00");
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 export function daysUntil(d: string | null): number | null {
   if (!d) return null;
   const target = new Date(d + "T00:00:00").getTime();

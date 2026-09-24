@@ -84,3 +84,46 @@ export function emailStoragePath(
   const slug = type.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   return `${caseId}/${slug}.${extension}`;
 }
+
+export type NdaCounterpartyType = "individual" | "company";
+
+export type NdaStatus = "Draft" | "Sent" | "Signed";
+
+export interface Nda {
+  id: string;
+  case_id: string;
+  counterparty_type: NdaCounterpartyType;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  legal_form: string | null;
+  jurisdiction: string | null;
+  place_address: string | null;
+  registration_agency: string | null;
+  registration_number: string | null;
+  tax_id: string | null;
+  representative_name: string | null;
+  representative_position: string | null;
+  email: string | null;
+  signing_place: string;
+  signing_date: string;
+  status: NdaStatus;
+  signed_file_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const NDA_SIGNED_FILES_BUCKET = "nda-files";
+
+/** Storage path for the uploaded signed NDA file for a given NDA row. */
+export function ndaSignedFilePath(ndaId: string, extension: string): string {
+  return `${ndaId}/signed.${extension}`;
+}
+
+/** Display name for the counterparty on an NDA row, whichever type it is. */
+export function ndaCounterpartyName(nda: Nda): string {
+  if (nda.counterparty_type === "individual") {
+    return [nda.first_name, nda.last_name].filter(Boolean).join(" ") || "—";
+  }
+  return nda.company_name || "—";
+}
