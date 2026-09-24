@@ -51,6 +51,8 @@ export interface Case {
   brand_colors: BrandColor[];
   logo_url: string | null;
   notes: string | null;
+  nda_template_company_url: string | null;
+  nda_template_individual_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,4 +128,14 @@ export function ndaCounterpartyName(nda: Nda): string {
     return [nda.first_name, nda.last_name].filter(Boolean).join(" ") || "—";
   }
   return nda.company_name || "—";
+}
+
+export const NDA_TEMPLATES_BUCKET = "nda-templates";
+
+/** Storage path for a project's uploaded NDA template, by counterparty type. */
+export function ndaTemplateStoragePath(
+  caseId: string,
+  counterpartyType: NdaCounterpartyType
+): string {
+  return `${caseId}/${counterpartyType}.docx`;
 }
