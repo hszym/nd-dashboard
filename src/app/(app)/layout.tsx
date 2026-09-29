@@ -34,6 +34,11 @@ export default async function AppLayout({
               NDAs
             </Link>
             {role === "admin" && (
+              <Link href="/users" className="text-slate-600 hover:text-slate-900">
+                Users
+              </Link>
+            )}
+            {role === "admin" && (
               <Link
                 href="/cases/new"
                 className="rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white hover:bg-slate-700"

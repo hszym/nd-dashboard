@@ -44,8 +44,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Team members can't reach the case-creation form even by typing the URL.
-  if (pathname.startsWith("/cases/new")) {
+  // Team members can't reach admin-only pages even by typing the URL.
+  if (pathname.startsWith("/cases/new") || pathname.startsWith("/users")) {
     const role = await getRole(supabase, user.id);
     if (role === "team") {
       return NextResponse.redirect(new URL("/", request.url));
