@@ -106,6 +106,9 @@ export interface Nda {
   tax_id: string | null;
   representative_name: string | null;
   representative_position: string | null;
+  /** Optional second counterparty signatory — most deals only need one. */
+  representative_name_2: string | null;
+  representative_position_2: string | null;
   email: string | null;
   signing_place: string;
   signing_date: string;

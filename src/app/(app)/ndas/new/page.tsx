@@ -23,6 +23,8 @@ export default function NewNdaPage() {
   const [taxId, setTaxId] = useState("");
   const [representativeName, setRepresentativeName] = useState("");
   const [representativePosition, setRepresentativePosition] = useState("");
+  const [representativeName2, setRepresentativeName2] = useState("");
+  const [representativePosition2, setRepresentativePosition2] = useState("");
 
   const [email, setEmail] = useState("");
   const [signingPlace, setSigningPlace] = useState("Luxembourg");
@@ -83,6 +85,8 @@ export default function NewNdaPage() {
       tax_id: counterpartyType === "company" ? taxId.trim() || null : null,
       representative_name: representativeName.trim() || null,
       representative_position: representativePosition.trim() || null,
+      representative_name_2: representativeName2.trim() || null,
+      representative_position_2: representativePosition2.trim() || null,
       email: email.trim() || null,
       signing_place: signingPlace.trim() || "Luxembourg",
       signing_date: signingDate,
@@ -236,6 +240,26 @@ export default function NewNdaPage() {
             />
           </Field>
         </div>
+
+        {counterpartyType === "company" && (
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Second representative name (optional)">
+              <input
+                className="input"
+                value={representativeName2}
+                onChange={(e) => setRepresentativeName2(e.target.value)}
+                placeholder="Only if this deal needs a second signatory"
+              />
+            </Field>
+            <Field label="Second representative position (optional)">
+              <input
+                className="input"
+                value={representativePosition2}
+                onChange={(e) => setRepresentativePosition2(e.target.value)}
+              />
+            </Field>
+          </div>
+        )}
 
         <Field label="Email">
           <input

@@ -41,6 +41,8 @@ export function fillNdaTemplate(templateBuffer: Buffer, nda: Nda): Buffer {
     tax_id: nda.tax_id ?? "",
     representative_name: nda.representative_name ?? "",
     representative_position: nda.representative_position ?? "",
+    representative_name_2: nda.representative_name_2 ?? "",
+    representative_position_2: nda.representative_position_2 ?? "",
     email: nda.email ?? "",
     signing_place: nda.signing_place,
     signing_date: formatLongDate(nda.signing_date),
