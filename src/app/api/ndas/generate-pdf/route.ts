@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  supabase,
   ndaCounterpartyName,
   NDA_GENERATED_PDFS_BUCKET,
   ndaGeneratedPdfPath,
 } from "@/lib/supabase";
 import { buildFilledNdaDocx } from "@/lib/nda-generate";
 import { convertDocxToPdf } from "@/lib/pdf-convert";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 /**
  * Renders and stores the non-admin PDF for an NDA, once, right after it's
@@ -21,7 +21,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  const result = await buildFilledNdaDocx(id);
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  }
+
+  const result = await buildFilledNdaDocx(supabase, id);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

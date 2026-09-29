@@ -1,9 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * Browser client — carries the signed-in user's session (via cookies, so
+ * server code sees the same session), used from all "use client" components.
+ * For Server Components / Route Handlers / Middleware, use the helpers in
+ * @/lib/supabase-server instead — this one has no request to read cookies from.
+ */
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 export type Stage = "Under Review" | "Raising" | "Completed";
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { ROLE_COOKIE, isValidRole } from "@/lib/auth";
+import { getRole } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import LogoutButton from "@/components/LogoutButton";
 
 export default async function AppLayout({
@@ -8,9 +8,11 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const roleValue = cookieStore.get(ROLE_COOKIE)?.value;
-  const role = isValidRole(roleValue) ? roleValue : null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const role = user ? await getRole(supabase, user.id) : null;
 
   return (
     <div className="flex min-h-screen flex-col">

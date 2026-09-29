@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import {
-  supabase,
   ndaCounterpartyName,
   NDA_GENERATED_PDFS_BUCKET,
   ndaGeneratedPdfPath,
 } from "@/lib/supabase";
 import { buildFilledNdaDocx } from "@/lib/nda-generate";
 import { convertDocxToPdf } from "@/lib/pdf-convert";
-import { ROLE_COOKIE, isValidRole } from "@/lib/auth";
+import { getRole } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");
@@ -16,11 +15,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  }
+
   // The Word version is admin-only; everyone else gets a PDF, regardless of
   // what's requested — this is enforced here, not just hidden in the UI.
-  const cookieStore = await cookies();
-  const roleValue = cookieStore.get(ROLE_COOKIE)?.value;
-  const role = isValidRole(roleValue) ? roleValue : "team";
+  const role = await getRole(supabase, user.id);
 
   if (role !== "admin") {
     // Normally already generated and cached at creation time — just redirect
@@ -37,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     // No cached PDF yet (older NDA from before this feature, or creation-time
     // generation failed) — generate it now and cache it for next time.
-    const result = await buildFilledNdaDocx(id);
+    const result = await buildFilledNdaDocx(supabase, id);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
@@ -82,7 +87,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Admin: always the live docx, filled fresh from the current template.
-  const result = await buildFilledNdaDocx(id);
+  const result = await buildFilledNdaDocx(supabase, id);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

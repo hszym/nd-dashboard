@@ -2,7 +2,8 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import path from "path";
 import fs from "fs";
-import { supabase, Nda, Case, ndaCounterpartyName } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { Nda, Case, ndaCounterpartyName } from "@/lib/supabase";
 import { formatLongDate } from "@/lib/utils";
 
 type NdaWithCase = Nda & {
@@ -21,8 +22,15 @@ export type BuildNdaDocxResult =
  * upload, or the bundled default for a company counterparty), and fills it.
  * Shared by the on-demand download route and the at-creation PDF generation step,
  * so both always produce byte-identical content for a given NDA.
+ *
+ * Takes the caller's Supabase client (not a fixed import) so the query runs
+ * with whatever session the caller has — a request-scoped server client in
+ * a Route Handler, carrying that user's auth for RLS purposes.
  */
-export async function buildFilledNdaDocx(ndaId: string): Promise<BuildNdaDocxResult> {
+export async function buildFilledNdaDocx(
+  supabase: SupabaseClient,
+  ndaId: string
+): Promise<BuildNdaDocxResult> {
   const { data: nda, error } = await supabase
     .from("ndas")
     .select("*, cases(name, nda_template_company_url, nda_template_individual_url)")
