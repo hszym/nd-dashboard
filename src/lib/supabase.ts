@@ -114,6 +114,8 @@ export interface Nda {
   signing_date: string;
   status: NdaStatus;
   signed_file_url: string | null;
+  /** PDF rendered from the filled template at creation time; served to non-admins. */
+  generated_pdf_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -131,6 +133,13 @@ export function ndaCounterpartyName(nda: Nda): string {
     return [nda.first_name, nda.last_name].filter(Boolean).join(" ") || "—";
   }
   return nda.company_name || "—";
+}
+
+export const NDA_GENERATED_PDFS_BUCKET = "nda-generated-pdfs";
+
+/** Storage path for the generated (non-admin) PDF for a given NDA row. */
+export function ndaGeneratedPdfPath(ndaId: string): string {
+  return `${ndaId}/nda.pdf`;
 }
 
 export const NDA_TEMPLATES_BUCKET = "nda-templates";

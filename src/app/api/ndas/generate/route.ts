@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { supabase, Nda, Case, ndaCounterpartyName } from "@/lib/supabase";
-import { fillNdaTemplate, readDefaultCompanyTemplate } from "@/lib/nda-generate";
+import {
+  supabase,
+  ndaCounterpartyName,
+  NDA_GENERATED_PDFS_BUCKET,
+  ndaGeneratedPdfPath,
+} from "@/lib/supabase";
+import { buildFilledNdaDocx } from "@/lib/nda-generate";
 import { convertDocxToPdf } from "@/lib/pdf-convert";
 import { ROLE_COOKIE, isValidRole } from "@/lib/auth";
-
-type NdaWithCase = Nda & {
-  cases: Pick<
-    Case,
-    "name" | "nda_template_company_url" | "nda_template_individual_url"
-  > | null;
-};
 
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");
@@ -18,67 +16,36 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  const { data: nda, error } = await supabase
-    .from("ndas")
-    .select("*, cases(name, nda_template_company_url, nda_template_individual_url)")
-    .eq("id", id)
-    .maybeSingle<NdaWithCase>();
-
-  if (error || !nda) {
-    return NextResponse.json({ error: "NDA not found" }, { status: 404 });
-  }
-
-  const projectTemplateUrl =
-    nda.counterparty_type === "company"
-      ? nda.cases?.nda_template_company_url
-      : nda.cases?.nda_template_individual_url;
-
-  let templateBuffer: Buffer;
-  if (projectTemplateUrl) {
-    try {
-      const res = await fetch(projectTemplateUrl);
-      if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`);
-      templateBuffer = Buffer.from(await res.arrayBuffer());
-    } catch {
-      return NextResponse.json(
-        { error: "Could not fetch this project's uploaded NDA template." },
-        { status: 500 }
-      );
-    }
-  } else if (nda.counterparty_type === "company") {
-    // No project-specific template — fall back to the shared default.
-    templateBuffer = readDefaultCompanyTemplate();
-  } else {
-    return NextResponse.json(
-      {
-        error:
-          "No individual-counterparty template uploaded for this project yet. Drop one in Project templates on the NDAs page.",
-      },
-      { status: 501 }
-    );
-  }
-
-  let buffer: Buffer;
-  try {
-    buffer = fillNdaTemplate(templateBuffer, nda);
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Could not generate the NDA." },
-      { status: 500 }
-    );
-  }
-
   // The Word version is admin-only; everyone else gets a PDF, regardless of
   // what's requested — this is enforced here, not just hidden in the UI.
   const cookieStore = await cookies();
   const roleValue = cookieStore.get(ROLE_COOKIE)?.value;
   const role = isValidRole(roleValue) ? roleValue : "team";
-  const baseName = `NDA - ${ndaCounterpartyName(nda)}`.replace(/[/\\]/g, "-");
 
   if (role !== "admin") {
+    // Normally already generated and cached at creation time — just redirect
+    // to the stored copy so this is a fast, no-conversion request.
+    const { data: existing } = await supabase
+      .from("ndas")
+      .select("generated_pdf_url")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (existing?.generated_pdf_url) {
+      return NextResponse.redirect(existing.generated_pdf_url);
+    }
+
+    // No cached PDF yet (older NDA from before this feature, or creation-time
+    // generation failed) — generate it now and cache it for next time.
+    const result = await buildFilledNdaDocx(id);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    const baseName = `NDA - ${ndaCounterpartyName(result.nda)}`.replace(/[/\\]/g, "-");
     let pdfBuffer: Buffer;
     try {
-      pdfBuffer = await convertDocxToPdf(buffer, `${baseName}.docx`);
+      pdfBuffer = await convertDocxToPdf(result.buffer, `${baseName}.docx`);
     } catch (err) {
       return NextResponse.json(
         {
@@ -91,6 +58,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const storagePath = ndaGeneratedPdfPath(id);
+    const { error: uploadError } = await supabase.storage
+      .from(NDA_GENERATED_PDFS_BUCKET)
+      .upload(storagePath, pdfBuffer, { contentType: "application/pdf", upsert: true });
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage
+        .from(NDA_GENERATED_PDFS_BUCKET)
+        .getPublicUrl(storagePath);
+      await supabase
+        .from("ndas")
+        .update({ generated_pdf_url: publicUrlData.publicUrl })
+        .eq("id", id);
+    }
+
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
@@ -100,7 +81,14 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return new NextResponse(new Uint8Array(buffer), {
+  // Admin: always the live docx, filled fresh from the current template.
+  const result = await buildFilledNdaDocx(id);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+  const baseName = `NDA - ${ndaCounterpartyName(result.nda)}`.replace(/[/\\]/g, "-");
+
+  return new NextResponse(new Uint8Array(result.buffer), {
     status: 200,
     headers: {
       "Content-Type":

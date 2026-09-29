@@ -69,7 +69,9 @@ export default function NewNdaPage() {
     setSaving(true);
     setError(null);
 
-    const { error: insertError } = await supabase.from("ndas").insert({
+    const { data: inserted, error: insertError } = await supabase
+      .from("ndas")
+      .insert({
       case_id: caseId,
       counterparty_type: counterpartyType,
       first_name: counterpartyType === "individual" ? firstName.trim() || null : null,
@@ -91,13 +93,30 @@ export default function NewNdaPage() {
       signing_place: signingPlace.trim() || "Luxembourg",
       signing_date: signingDate,
       status: "Draft",
-    });
+      })
+      .select("id")
+      .single();
 
-    setSaving(false);
-    if (insertError) {
-      setError(insertError.message);
+    if (insertError || !inserted) {
+      setSaving(false);
+      setError(insertError?.message ?? "Could not create the NDA.");
       return;
     }
+
+    // Render and cache the PDF non-admins will download. Best-effort: a
+    // failure here doesn't block creation — the download route falls back
+    // to generating it on first request instead.
+    try {
+      await fetch("/api/ndas/generate-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: inserted.id }),
+      });
+    } catch {
+      // Ignored — see comment above.
+    }
+
+    setSaving(false);
     router.push("/ndas");
   }
 
