@@ -284,12 +284,29 @@ export default function NdasPage() {
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1 text-xs">
                       {hasTemplate ? (
-                        <a
-                          href={`/api/ndas/generate?id=${nda.id}`}
-                          className="text-blue-600 underline"
-                        >
-                          Download {role === "admin" ? "(.docx)" : "(.pdf)"}
-                        </a>
+                        role === "admin" ? (
+                          <div className="flex gap-2">
+                            <a
+                              href={`/api/ndas/generate?id=${nda.id}`}
+                              className="text-blue-600 underline"
+                            >
+                              Download (.docx)
+                            </a>
+                            <a
+                              href={`/api/ndas/generate?id=${nda.id}&format=pdf`}
+                              className="text-blue-600 underline"
+                            >
+                              (.pdf)
+                            </a>
+                          </div>
+                        ) : (
+                          <a
+                            href={`/api/ndas/generate?id=${nda.id}`}
+                            className="text-blue-600 underline"
+                          >
+                            Download (.pdf)
+                          </a>
+                        )
                       ) : (
                         <span className="text-slate-400">
                           No template for this project
