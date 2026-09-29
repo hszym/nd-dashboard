@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { supabase, Nda, Case, ndaCounterpartyName } from "@/lib/supabase";
 import { fillNdaTemplate, readDefaultCompanyTemplate } from "@/lib/nda-generate";
+import { convertDocxToPdf } from "@/lib/pdf-convert";
+import { ROLE_COOKIE, isValidRole } from "@/lib/auth";
 
 type NdaWithCase = Nda & {
   cases: Pick<
@@ -65,14 +68,44 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const filename = `NDA - ${ndaCounterpartyName(nda)}.docx`.replace(/[/\\]/g, "-");
+  // The Word version is admin-only; everyone else gets a PDF, regardless of
+  // what's requested — this is enforced here, not just hidden in the UI.
+  const cookieStore = await cookies();
+  const roleValue = cookieStore.get(ROLE_COOKIE)?.value;
+  const role = isValidRole(roleValue) ? roleValue : "team";
+  const baseName = `NDA - ${ndaCounterpartyName(nda)}`.replace(/[/\\]/g, "-");
+
+  if (role !== "admin") {
+    let pdfBuffer: Buffer;
+    try {
+      pdfBuffer = await convertDocxToPdf(buffer, `${baseName}.docx`);
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error:
+            err instanceof Error
+              ? `Could not generate the PDF: ${err.message}`
+              : "Could not generate the PDF.",
+        },
+        { status: 500 }
+      );
+    }
+
+    return new NextResponse(new Uint8Array(pdfBuffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${baseName}.pdf"`,
+      },
+    });
+  }
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${baseName}.docx"`,
     },
   });
 }

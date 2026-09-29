@@ -288,7 +288,7 @@ export default function NdasPage() {
                           href={`/api/ndas/generate?id=${nda.id}`}
                           className="text-blue-600 underline"
                         >
-                          Download
+                          Download {role === "admin" ? "(.docx)" : "(.pdf)"}
                         </a>
                       ) : (
                         <span className="text-slate-400">
