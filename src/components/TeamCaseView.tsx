@@ -1,5 +1,7 @@
 import { Case, CaseDocument, isEmailDocumentType } from "@/lib/supabase";
 import StageBadge from "./StageBadge";
+import CaseTabs from "./CaseTabs";
+import CaseTrack from "./CaseTrack";
 
 function isAvailable(doc: CaseDocument): boolean {
   return doc.status === "Done" && Boolean(doc.file_url);
@@ -44,6 +46,8 @@ export default function TeamCaseView({
         </div>
       </div>
 
+      <CaseTabs
+        marketing={
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="border-b border-slate-100 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-900">
@@ -75,6 +79,9 @@ export default function TeamCaseView({
           </ul>
         )}
       </div>
+        }
+        track={<CaseTrack caseData={caseData} role="team" />}
+      />
     </div>
   );
 }

@@ -97,6 +97,35 @@ export type NdaCounterpartyType = "individual" | "company";
 
 export type NdaStatus = "Draft" | "Sent" | "Signed";
 
+export type LpStatus = "Contacted" | "Interested" | "Declined";
+export const LP_STATUSES: LpStatus[] = ["Contacted", "Interested", "Declined"];
+
+export type Tier = 1 | 2 | 3;
+export const TIERS: { value: Tier; label: string; description: string }[] = [
+  {
+    value: 1,
+    label: "Tier 1 · Institutional",
+    description:
+      "Large sovereign wealth funds, big public pensions, top university endowments, major insurers. Very large cheques and strict due diligence; having one in the deal is a seal of approval that attracts others.",
+  },
+  {
+    value: 2,
+    label: "Tier 2 · Mid-size institutions",
+    description:
+      "Smaller pensions, regional institutions, funds of funds, large foundations. Solid and professional, but smaller cheques and less signalling power.",
+  },
+  {
+    value: 3,
+    label: "Tier 3 · Family offices & HNW",
+    description:
+      "Family offices, HNW individuals, smaller institutions. Faster and more flexible, but cheques are smaller and often more variable.",
+  },
+];
+
+export function tierInfo(tier: Tier | null) {
+  return TIERS.find((t) => t.value === tier) ?? null;
+}
+
 export interface Nda {
   id: string;
   case_id: string;
@@ -118,7 +147,12 @@ export interface Nda {
   email: string | null;
   signing_place: string;
   signing_date: string;
+  /** The NDA's own status (Draft/Sent/Signed) — distinct from `lp_status`. */
   status: NdaStatus;
+  /** Pipeline stage of the LP relationship. */
+  lp_status: LpStatus;
+  /** LP classification, 1 = institutional. Null until filled. */
+  tier: Tier | null;
   signed_file_url: string | null;
   /** PDF rendered from the filled template at creation time; served to non-admins. */
   generated_pdf_url: string | null;

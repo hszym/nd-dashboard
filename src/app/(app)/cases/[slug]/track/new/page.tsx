@@ -1,15 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase, Case, NdaCounterpartyType } from "@/lib/supabase";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  supabase,
+  Case,
+  NdaCounterpartyType,
+  LP_STATUSES,
+  LpStatus,
+  Tier,
+  TIERS,
+} from "@/lib/supabase";
 
-export default function NewNdaPage() {
+export default function AddLpPage() {
+  const params = useParams<{ slug: string }>();
   const router = useRouter();
-  const [cases, setCases] = useState<Case[]>([]);
-  const [caseId, setCaseId] = useState("");
+  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [counterpartyType, setCounterpartyType] =
     useState<NdaCounterpartyType>("company");
+
+  const [lpStatus, setLpStatus] = useState<LpStatus>("Contacted");
+  const [tier, setTier] = useState<Tier | "">("");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -40,29 +53,31 @@ export default function NewNdaPage() {
     supabase
       .from("cases")
       .select("*")
-      .order("name")
+      .eq("slug", params.slug)
+      .maybeSingle()
       .then(({ data }) => {
         if (!active) return;
-        setCases((data as Case[]) ?? []);
-        if (data && data.length > 0) setCaseId(data[0].id);
+        if (data) setCaseData(data as Case);
+        else setNotFound(true);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [params.slug]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!caseId) {
-      setError("Pick a project.");
+    if (!caseData) return;
+    if (tier === "") {
+      setError("Pick a tier.");
       return;
     }
     if (counterpartyType === "individual" && !firstName.trim() && !lastName.trim()) {
-      setError("Enter the counterparty's name.");
+      setError("Enter the LP's name.");
       return;
     }
     if (counterpartyType === "company" && !companyName.trim()) {
-      setError("Enter the counterparty's company name.");
+      setError("Enter the LP's company name.");
       return;
     }
 
@@ -72,34 +87,36 @@ export default function NewNdaPage() {
     const { data: inserted, error: insertError } = await supabase
       .from("ndas")
       .insert({
-      case_id: caseId,
-      counterparty_type: counterpartyType,
-      first_name: counterpartyType === "individual" ? firstName.trim() || null : null,
-      last_name: counterpartyType === "individual" ? lastName.trim() || null : null,
-      company_name: counterpartyType === "company" ? companyName.trim() || null : null,
-      legal_form: counterpartyType === "company" ? legalForm.trim() || null : null,
-      jurisdiction: counterpartyType === "company" ? jurisdiction.trim() || null : null,
-      place_address: counterpartyType === "company" ? placeAddress.trim() || null : null,
-      registration_agency:
-        counterpartyType === "company" ? registrationAgency.trim() || null : null,
-      registration_number:
-        counterpartyType === "company" ? registrationNumber.trim() || null : null,
-      tax_id: counterpartyType === "company" ? taxId.trim() || null : null,
-      representative_name: representativeName.trim() || null,
-      representative_position: representativePosition.trim() || null,
-      representative_name_2: representativeName2.trim() || null,
-      representative_position_2: representativePosition2.trim() || null,
-      email: email.trim() || null,
-      signing_place: signingPlace.trim() || "Luxembourg",
-      signing_date: signingDate,
-      status: "Draft",
+        case_id: caseData.id,
+        counterparty_type: counterpartyType,
+        lp_status: lpStatus,
+        tier,
+        first_name: counterpartyType === "individual" ? firstName.trim() || null : null,
+        last_name: counterpartyType === "individual" ? lastName.trim() || null : null,
+        company_name: counterpartyType === "company" ? companyName.trim() || null : null,
+        legal_form: counterpartyType === "company" ? legalForm.trim() || null : null,
+        jurisdiction: counterpartyType === "company" ? jurisdiction.trim() || null : null,
+        place_address: counterpartyType === "company" ? placeAddress.trim() || null : null,
+        registration_agency:
+          counterpartyType === "company" ? registrationAgency.trim() || null : null,
+        registration_number:
+          counterpartyType === "company" ? registrationNumber.trim() || null : null,
+        tax_id: counterpartyType === "company" ? taxId.trim() || null : null,
+        representative_name: representativeName.trim() || null,
+        representative_position: representativePosition.trim() || null,
+        representative_name_2: representativeName2.trim() || null,
+        representative_position_2: representativePosition2.trim() || null,
+        email: email.trim() || null,
+        signing_place: signingPlace.trim() || "Luxembourg",
+        signing_date: signingDate,
+        status: "Draft",
       })
       .select("id")
       .single();
 
     if (insertError || !inserted) {
       setSaving(false);
-      setError(insertError?.message ?? "Could not create the NDA.");
+      setError(insertError?.message ?? "Could not add the LP.");
       return;
     }
 
@@ -117,33 +134,66 @@ export default function NewNdaPage() {
     }
 
     setSaving(false);
-    router.push("/ndas");
+    router.push(`/cases/${caseData.slug}?tab=track`);
   }
+
+  if (notFound) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+        <p className="text-slate-600">Project not found.</p>
+        <Link href="/" className="mt-2 inline-block text-sm text-slate-900 underline">
+          Back to projects
+        </Link>
+      </div>
+    );
+  }
+  if (!caseData) return <p className="text-sm text-slate-500">Loading…</p>;
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-xl font-semibold text-slate-900">New NDA</h1>
+      <Link
+        href={`/cases/${caseData.slug}?tab=track`}
+        className="text-sm text-slate-500 hover:text-slate-900"
+      >
+        ← {caseData.name}
+      </Link>
+      <h1 className="mt-3 text-xl font-semibold text-slate-900">Add LP</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Creates a tracked NDA for a project&apos;s counterparty.
+        Adds an LP to {caseData.name} and creates their NDA.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        <Field label="Project *">
-          <select
-            className="input"
-            value={caseId}
-            onChange={(e) => setCaseId(e.target.value)}
-          >
-            {cases.length === 0 && <option value="">No projects yet</option>}
-            {cases.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Tier *">
+            <select
+              className="input"
+              value={tier}
+              onChange={(e) =>
+                setTier(e.target.value ? (Number(e.target.value) as Tier) : "")
+              }
+            >
+              <option value="">Select a tier…</option>
+              {TIERS.map((t) => (
+                <option key={t.value} value={t.value} title={t.description}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Status">
+            <select
+              className="input"
+              value={lpStatus}
+              onChange={(e) => setLpStatus(e.target.value as LpStatus)}
+            >
+              {LP_STATUSES.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
 
-        <Field label="Counterparty type">
+        <Field label="LP type">
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-2">
               <input
@@ -319,7 +369,7 @@ export default function NewNdaPage() {
             disabled={saving}
             className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
           >
-            {saving ? "Creating…" : "Create NDA"}
+            {saving ? "Adding…" : "Add LP"}
           </button>
         </div>
       </form>

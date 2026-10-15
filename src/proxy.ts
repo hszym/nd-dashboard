@@ -45,7 +45,12 @@ export async function proxy(request: NextRequest) {
   }
 
   // Team members can't reach admin-only pages even by typing the URL.
-  if (pathname.startsWith("/cases/new") || pathname.startsWith("/users")) {
+  const isAddLp = /^\/cases\/[^/]+\/track\/new\/?$/.test(pathname);
+  if (
+    pathname.startsWith("/cases/new") ||
+    pathname.startsWith("/users") ||
+    isAddLp
+  ) {
     const role = await getRole(supabase, user.id);
     if (role === "team") {
       return NextResponse.redirect(new URL("/", request.url));

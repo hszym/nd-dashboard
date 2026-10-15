@@ -30,9 +30,6 @@ export default async function AppLayout({
             <Link href="/" className="text-slate-600 hover:text-slate-900">
               Cases
             </Link>
-            <Link href="/ndas" className="text-slate-600 hover:text-slate-900">
-              NDAs
-            </Link>
             {role === "admin" && (
               <Link href="/users" className="text-slate-600 hover:text-slate-900">
                 Users

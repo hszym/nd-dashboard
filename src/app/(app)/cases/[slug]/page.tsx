@@ -19,6 +19,8 @@ import {
 import StageBadge from "@/components/StageBadge";
 import DocStatusBadge from "@/components/DocStatusBadge";
 import TeamCaseView from "@/components/TeamCaseView";
+import CaseTabs from "@/components/CaseTabs";
+import CaseTrack from "@/components/CaseTrack";
 import { useRole } from "@/lib/useRole";
 import { formatAmount, formatDate } from "@/lib/utils";
 
@@ -503,7 +505,9 @@ export default function CaseDetailPage() {
         )}
       </div>
 
-      {/* Document checklist */}
+      <CaseTabs
+        marketing={
+      /* Document checklist */
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="border-b border-slate-100 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-900">
@@ -567,6 +571,9 @@ export default function CaseDetailPage() {
           </tbody>
         </table>
       </div>
+        }
+        track={<CaseTrack caseData={caseData} role="admin" />}
+      />
     </div>
   );
 }
