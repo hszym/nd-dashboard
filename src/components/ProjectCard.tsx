@@ -40,10 +40,12 @@ export default function ProjectCard({
         }
       }}
       tabIndex={active ? 0 : -1}
-      className="group flex aspect-[4/5] w-full flex-col items-center justify-center gap-7 rounded-[2.25rem] border border-white/20 bg-white/10 p-8 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      draggable={false}
+      className="glass group relative flex aspect-[4/5] w-full flex-col overflow-hidden rounded-[2.25rem] p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
     >
+      {/* Logo fills the whole tile; the tile's rounding clips the image. */}
       <div
-        className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-[2rem] bg-white/90 shadow-lg ring-1 ring-white/40"
+        className="relative aspect-square w-full flex-none overflow-hidden rounded-[1.75rem] bg-white/10 shadow-lg"
         style={!project.logo_url && tint ? { backgroundColor: tint } : undefined}
       >
         {project.logo_url ? (
@@ -52,19 +54,20 @@ export default function ProjectCard({
             src={project.logo_url}
             alt=""
             draggable={false}
-            className="h-full w-full object-contain p-4"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <span className="text-4xl font-semibold tracking-tight text-white">
+          <span className="absolute inset-0 flex items-center justify-center text-6xl font-semibold tracking-tight text-white">
             {initials(project.name)}
           </span>
         )}
       </div>
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold tracking-tight text-white">
+
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <h2 className="line-clamp-2 text-2xl font-semibold tracking-tight text-white">
           {project.name}
         </h2>
-        <div className="mt-3 flex items-center justify-center gap-2 text-xs text-white/60">
+        <div className="mt-2 flex items-center justify-center gap-2 text-xs text-white/60">
           <span
             className={`h-1.5 w-1.5 rounded-full ${
               STAGE_DOT[project.stage] ?? "bg-white/50"
@@ -73,6 +76,14 @@ export default function ProjectCard({
           {project.stage}
         </div>
       </div>
+
+      {/* Dims inactive cards without putting opacity on an ancestor of the glass. */}
+      <div
+        aria-hidden
+        className={`card-dim pointer-events-none absolute inset-0 bg-slate-950/45 ${
+          active ? "opacity-0" : "opacity-100"
+        }`}
+      />
     </Link>
   );
 }

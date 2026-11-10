@@ -25,6 +25,10 @@ body {
     sans-serif;
 }
 
+.card-dim {
+  transition: opacity 450ms ease;
+}
+
 .no-scrollbar {
   scrollbar-width: none;
 }
@@ -33,26 +37,31 @@ body {
 }
 
 .ambient-blob {
-  transition:
-    background-color 900ms ease,
-    opacity 900ms ease;
+  background: radial-gradient(closest-side, currentColor, transparent);
+  transition: color 900ms ease;
+}
+
+/* Frosted glass. Never put opacity < 1 on an ancestor of a .glass element:
+   it becomes the backdrop root and the blur samples nothing. */
+.glass {
+  background-color: rgb(255 255 255 / 0.14);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgb(255 255 255 / 0.22);
 }
 
 .carousel-slide {
   transform: scale(0.88);
-  opacity: 0.55;
-  transition:
-    transform 450ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 450ms ease;
+  transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .carousel-slide.is-active {
   transform: scale(1);
-  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ambient-blob,
-  .carousel-slide {
+  .carousel-slide,
+  .card-dim {
     transition: none;
   }
   .no-scrollbar {

@@ -3,19 +3,24 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { Case } from "@/lib/supabase";
 import ProjectCard from "./ProjectCard";
+import NewDealCard from "./NewDealCard";
 
 export default function ProjectCarousel({
   projects,
+  showAddCard,
   active,
   onActiveChange,
 }: {
   projects: Case[];
+  /** Adds a final "Add a new deal" slide (admins only). */
+  showAddCard: boolean;
   active: number;
   onActiveChange: (index: number) => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
   const raf = useRef<number | null>(null);
+  const count = projects.length + (showAddCard ? 1 : 0);
 
   const scrollTo = useCallback((index: number, smooth = true) => {
     const el = slideRefs.current[index];
@@ -58,15 +63,19 @@ export default function ProjectCarousel({
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-      if (e.key === "ArrowRight") scrollTo(Math.min(active + 1, projects.length - 1));
+      if (e.key === "ArrowRight") scrollTo(Math.min(active + 1, count - 1));
       if (e.key === "ArrowLeft") scrollTo(Math.max(active - 1, 0));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, projects.length, scrollTo]);
+  }, [active, count, scrollTo]);
 
   const atStart = active <= 0;
-  const atEnd = active >= projects.length - 1;
+  const atEnd = active >= count - 1;
+  const slideClass = (i: number) =>
+    `carousel-slide w-[min(78vw,360px)] shrink-0 snap-center ${
+      i === active ? "is-active" : ""
+    }`;
 
   return (
     <div className="relative">
@@ -81,9 +90,7 @@ export default function ProjectCarousel({
             ref={(el) => {
               slideRefs.current[i] = el;
             }}
-            className={`carousel-slide w-[min(78vw,360px)] shrink-0 snap-center ${
-              i === active ? "is-active" : ""
-            }`}
+            className={slideClass(i)}
           >
             <ProjectCard
               project={p}
@@ -92,33 +99,48 @@ export default function ProjectCarousel({
             />
           </div>
         ))}
+        {showAddCard && (
+          <div
+            ref={(el) => {
+              slideRefs.current[projects.length] = el;
+            }}
+            className={slideClass(projects.length)}
+          >
+            <NewDealCard
+              active={active === projects.length}
+              onSelect={() => scrollTo(projects.length)}
+            />
+          </div>
+        )}
       </div>
 
       <button
         type="button"
-        aria-label="Previous project"
+        aria-label="Previous"
         onClick={() => scrollTo(active - 1)}
         disabled={atStart}
-        className="absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-xl transition hover:bg-white/20 disabled:opacity-0 md:flex"
+        className="glass absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white transition hover:bg-white/25 disabled:opacity-0 md:flex"
       >
         ‹
       </button>
       <button
         type="button"
-        aria-label="Next project"
+        aria-label="Next"
         onClick={() => scrollTo(active + 1)}
         disabled={atEnd}
-        className="absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-xl transition hover:bg-white/20 disabled:opacity-0 md:flex"
+        className="glass absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white transition hover:bg-white/25 disabled:opacity-0 md:flex"
       >
         ›
       </button>
 
       <div className="mt-2 flex items-center justify-center gap-2">
-        {projects.map((p, i) => (
+        {Array.from({ length: count }, (_, i) => (
           <button
-            key={p.id}
+            key={i}
             type="button"
-            aria-label={`Go to ${p.name}`}
+            aria-label={
+              i < projects.length ? `Go to ${projects[i].name}` : "Add a new deal"
+            }
             onClick={() => scrollTo(i)}
             className={`h-1.5 rounded-full transition-all ${
               i === active ? "w-6 bg-white" : "w-1.5 bg-white/35"

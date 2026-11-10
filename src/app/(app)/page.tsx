@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { supabase, Case } from "@/lib/supabase";
 import { useRole } from "@/lib/useRole";
 import AmbientBackground from "@/components/AmbientBackground";
@@ -33,7 +32,8 @@ export default function HomePage() {
     };
   }, []);
 
-  const current = cases?.[Math.min(active, (cases?.length ?? 1) - 1)];
+  // The "Add a new deal" slide sits past the last case: no case, default tint.
+  const current = cases?.[active];
   const colors = (current?.brand_colors ?? []).map((c) => c.hex);
 
   return (
@@ -44,25 +44,18 @@ export default function HomePage() {
         <Notice tone="error">Could not load cases: {error}</Notice>
       ) : !cases ? (
         <p className="py-24 text-center text-sm text-white/60">Loading…</p>
-      ) : cases.length === 0 ? (
+      ) : cases.length === 0 && role !== "admin" ? (
         <Notice>
-          <h2 className="text-lg font-semibold text-white">No cases yet</h2>
+          <h2 className="text-lg font-semibold text-white">No deals yet</h2>
           <p className="mt-1 text-sm text-white/60">
-            Create your first case to get started.
+            Nothing to show here for now.
           </p>
-          {role !== "team" && (
-            <Link
-              href="/cases/new"
-              className="mt-5 inline-block rounded-full bg-white px-5 py-2 text-sm font-medium text-slate-900 hover:bg-white/90"
-            >
-              + New case
-            </Link>
-          )}
         </Notice>
       ) : (
         <div className="relative left-1/2 w-screen -translate-x-1/2">
           <ProjectCarousel
             projects={cases}
+            showAddCard={role === "admin"}
             active={active}
             onActiveChange={setActive}
           />
