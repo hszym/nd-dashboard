@@ -28,8 +28,13 @@ export default function AmbientBackground({ colors }: { colors: string[] }) {
   // so make both dark while this page is shown, then restore.
   useEffect(() => {
     const root = document.documentElement;
+    const body = document.body;
     const prevBg = root.style.backgroundColor;
+    const prevBodyBg = body.style.backgroundColor;
     root.style.backgroundColor = BASE;
+    // Once <html> has its own background, <body>'s white one stops propagating
+    // to the canvas and would paint over the fixed -z-10 gradient layer.
+    body.style.backgroundColor = "transparent";
 
     let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     const created = !meta;
@@ -43,6 +48,7 @@ export default function AmbientBackground({ colors }: { colors: string[] }) {
 
     return () => {
       root.style.backgroundColor = prevBg;
+      body.style.backgroundColor = prevBodyBg;
       if (created) meta?.remove();
       else if (meta) meta.content = prevTheme;
     };
