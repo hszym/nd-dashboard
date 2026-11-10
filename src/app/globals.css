@@ -36,9 +36,34 @@ body {
   display: none;
 }
 
-.ambient-blob {
-  background: radial-gradient(closest-side, currentColor, transparent);
-  transition: color 900ms ease;
+@property --ambient-a {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #4f46e5;
+}
+@property --ambient-b {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0ea5e9;
+}
+
+.ambient {
+  background-color: #020617;
+  background-image:
+    radial-gradient(
+      ellipse 120% 70% at 15% 10%,
+      color-mix(in srgb, var(--ambient-a) 75%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 120% 70% at 85% 95%,
+      color-mix(in srgb, var(--ambient-b) 65%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(to bottom, rgb(2 6 23 / 0.25), rgb(2 6 23 / 0.55));
+  transition:
+    --ambient-a 900ms ease,
+    --ambient-b 900ms ease;
 }
 
 /* Frosted glass. Never put opacity < 1 on an ancestor of a .glass element:
@@ -59,7 +84,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-blob,
+  .ambient,
   .carousel-slide,
   .card-dim {
     transition: none;

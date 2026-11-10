@@ -62,7 +62,9 @@ export default function AppChrome({
 
       <main
         className={`mx-auto w-full flex-1 ${
-          isHome ? "px-0 py-16" : "max-w-6xl px-6 py-8"
+          isHome
+            ? "flex flex-col justify-center px-0 pb-16 pt-12"
+            : "max-w-6xl px-6 py-8"
         }`}
       >
         {children}

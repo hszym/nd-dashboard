@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
+import type { CSSProperties } from "react";
+
 const DEFAULT_COLORS = ["#4f46e5", "#0ea5e9"];
+const BASE = "#020617";
 
 function normalize(hex: string | undefined, fallback: string) {
   return hex && /^#?[0-9a-f]{3,8}$/i.test(hex.trim())
@@ -11,28 +15,44 @@ function normalize(hex: string | undefined, fallback: string) {
 }
 
 /**
- * Full-screen backdrop that tints to the focused project's brand colors.
- * The glow is a radial gradient (no CSS blur filter, which mobile browsers
- * drop on very large elements); `color` is transitioned so tints cross-fade.
+ * Full-screen backdrop tinted by the focused project's brand colors. One
+ * element, two big radial gradients painted straight onto it (no separate
+ * blob shapes, so there is nothing that can read as a square on a phone).
+ * The colors are registered custom properties so they cross-fade.
  */
 export default function AmbientBackground({ colors }: { colors: string[] }) {
   const a = normalize(colors[0], DEFAULT_COLORS[0]);
   const b = normalize(colors[1] ?? colors[0], DEFAULT_COLORS[1]);
 
+  // Phones paint the page background (and status bar) behind the fixed layer,
+  // so make both dark while this page is shown, then restore.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prevBg = root.style.backgroundColor;
+    root.style.backgroundColor = BASE;
+
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const created = !meta;
+    const prevTheme = meta?.content ?? "";
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = BASE;
+
+    return () => {
+      root.style.backgroundColor = prevBg;
+      if (created) meta?.remove();
+      else if (meta) meta.content = prevTheme;
+    };
+  }, []);
+
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-slate-950"
-    >
-      <div
-        className="ambient-blob absolute -left-1/4 -top-1/4 h-[90vmax] w-[90vmax] rounded-full opacity-70"
-        style={{ color: a }}
-      />
-      <div
-        className="ambient-blob absolute -bottom-1/3 -right-1/4 h-[80vmax] w-[80vmax] rounded-full opacity-60"
-        style={{ color: b }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-950/30 via-transparent to-slate-950/60" />
-    </div>
+      className="ambient pointer-events-none fixed inset-0 -z-10"
+      style={{ "--ambient-a": a, "--ambient-b": b } as CSSProperties}
+    />
   );
 }

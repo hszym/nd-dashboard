@@ -45,7 +45,7 @@ export default function ProjectCard({
     >
       {/* Logo fills the whole tile; the tile's rounding clips the image. */}
       <div
-        className="relative aspect-square w-full flex-none overflow-hidden rounded-[1.75rem] bg-white/10 shadow-lg"
+        className="relative isolate aspect-square w-full flex-none transform-gpu overflow-hidden rounded-[1.75rem] bg-white/10 shadow-lg"
         style={!project.logo_url && tint ? { backgroundColor: tint } : undefined}
       >
         {project.logo_url ? (
