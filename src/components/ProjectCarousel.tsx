@@ -82,7 +82,7 @@ export default function ProjectCarousel({
       <div
         ref={trackRef}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory items-center gap-5 overflow-x-auto scroll-smooth px-[calc(50%-min(39vw,180px))] py-10"
+        className="no-scrollbar flex snap-x snap-mandatory items-center gap-5 overflow-x-auto scroll-smooth px-[calc(50%-min(39vw,180px))] pb-24 pt-16"
       >
         {projects.map((p, i) => (
           <div
@@ -133,7 +133,7 @@ export default function ProjectCarousel({
         ›
       </button>
 
-      <div className="mt-2 flex items-center justify-center gap-2">
+      <div className="-mt-12 flex items-center justify-center gap-2">
         {Array.from({ length: count }, (_, i) => (
           <button
             key={i}

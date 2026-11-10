@@ -23,7 +23,7 @@ export default function AppChrome({
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       {isHome ? (
-        <div className="fixed right-4 top-4 z-20 flex items-center gap-4 rounded-full glass px-4 py-2 text-xs text-white">
+        <div className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-4 rounded-full glass px-4 py-2 text-xs text-white">
           {role === "admin" && (
             <Link href="/users" className="font-medium hover:text-white/80">
               Manage users
@@ -32,7 +32,7 @@ export default function AppChrome({
           <LogoutButton className="text-xs text-white/70 hover:text-white" />
         </div>
       ) : (
-        <header className="relative z-10 border-b border-slate-200/60 bg-white/75 backdrop-blur-xl">
+        <header className="relative z-10 border-b border-slate-200/60 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
             <Link
               href="/"
@@ -63,7 +63,7 @@ export default function AppChrome({
       <main
         className={`mx-auto w-full flex-1 ${
           isHome
-            ? "flex flex-col justify-center px-0 pb-16 pt-12"
+            ? "flex flex-col justify-center px-0 pb-16 pt-[max(3rem,calc(env(safe-area-inset-top)+2rem))]"
             : "max-w-6xl px-6 py-8"
         }`}
       >
