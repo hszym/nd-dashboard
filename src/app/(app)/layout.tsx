@@ -15,8 +15,8 @@ export default async function AppLayout({
   const role = user ? await getRole(supabase, user.id) : null;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
+      <header className="relative z-10 border-b border-slate-200/60 bg-white/75 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-sm font-semibold text-white">
@@ -55,7 +55,7 @@ export default async function AppLayout({
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         {children}
       </main>
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+      <footer className="relative z-10 border-t border-slate-200/60 bg-white/60 py-4 text-center text-xs text-slate-500 backdrop-blur-xl">
         Internal tool — not for external distribution
       </footer>
     </div>

@@ -20,7 +20,7 @@ The Supabase connection is already configured in `.env.local`:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://usbofewlmzolyzipyfxo.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_TDRdpTrje3zGuvcK_X4O7w_mLmTwdCI
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_TDRdpTrje3zGuvcK_X4O7w_mLmTwdCI
 ```
 
 This points at the `nd-group-dashboard` Supabase project (in your personal

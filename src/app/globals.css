@@ -25,6 +25,41 @@ body {
     sans-serif;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.ambient-blob {
+  transition:
+    background-color 900ms ease,
+    opacity 900ms ease;
+}
+
+.carousel-slide {
+  transform: scale(0.88);
+  opacity: 0.55;
+  transition:
+    transform 450ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 450ms ease;
+}
+.carousel-slide.is-active {
+  transform: scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob,
+  .carousel-slide {
+    transition: none;
+  }
+  .no-scrollbar {
+    scroll-behavior: auto;
+  }
+}
+
 .input {
   width: 100%;
   border-radius: 0.375rem;
