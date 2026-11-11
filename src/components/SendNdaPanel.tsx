@@ -78,9 +78,21 @@ export default function SendNdaPanel({
     const { subject, body } = ndaEmailContent(lp, caseData.name);
 
     if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+      // The share sheet can't set a recipient, so put the LP's address on the
+      // clipboard first (started in the same tap) ready to paste into "To".
+      const copiedAddress = lp.email
+        ? navigator.clipboard
+            ?.writeText(lp.email)
+            .then(() => true)
+            .catch(() => false) ?? Promise.resolve(false)
+        : Promise.resolve(false);
       try {
         await navigator.share({ files: [file], title: subject, text: body });
-        setNotice("Opened your share sheet. Choose Mail or Outlook, then send it.");
+        setNotice(
+          (await copiedAddress)
+            ? `Choose Mail or Outlook, then paste ${lp.email} into the To field. It's already copied.`
+            : "Opened your share sheet. Choose Mail or Outlook, then send it."
+        );
         return;
       } catch (err) {
         // The person closed the share sheet: nothing more to do.
