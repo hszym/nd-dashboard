@@ -158,8 +158,19 @@ export default function DealPager({
                 {caseData.name}
               </h1>
               {subline && <p className="mt-1 text-sm text-slate-500">{subline}</p>}
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                 <StageBadge stage={caseData.stage} />
+                {caseData.website_url && (
+                  <a
+                    href={websiteHref(caseData.website_url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full bg-white/60 px-3 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-white"
+                  >
+                    {websiteLabel(caseData.website_url)}
+                    <span aria-hidden>↗</span>
+                  </a>
+                )}
               </div>
             </div>
 
@@ -182,11 +193,7 @@ export default function DealPager({
               title="Send NDA"
               subtitle="Pick an LP, then draft the email"
             />
-            <Tile
-              onClick={() => open("add")}
-              title="+ Add documents / information"
-              subtitle="Drop files or a note for review"
-            />
+            <DropTile onClick={() => open("add")} label="Drop files or a note for review" />
 
             <p className="pt-2 text-center text-xs text-slate-400">
               Swipe left for details →
@@ -277,7 +284,7 @@ export default function DealPager({
       <Sheet
         open={sheet === "add"}
         onClose={() => setSheet(null)}
-        title="Add documents / information"
+        title="Drop files or a note for review"
       >
         <AddInfoPanel
           caseData={caseData}
@@ -286,6 +293,47 @@ export default function DealPager({
         />
       </Sheet>
     </div>
+  );
+}
+
+function websiteHref(url: string): string {
+  const u = url.trim();
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`;
+}
+
+function websiteLabel(url: string): string {
+  try {
+    return new URL(websiteHref(url)).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/** The "drop files or a note" entry point: a round plus badge and one line of text. */
+function DropTile({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="glass group flex w-full items-center gap-4 rounded-[1.75rem] p-4 text-left shadow-[0_20px_50px_-25px_rgba(15,23,42,0.35)] transition-colors hover:bg-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+    >
+      <span
+        aria-hidden
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_10px_20px_-8px_rgba(15,23,42,0.6)] transition-transform group-hover:scale-105"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="h-6 w-6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </span>
+      <span className="text-base font-semibold tracking-tight">{label}</span>
+    </button>
   );
 }
 

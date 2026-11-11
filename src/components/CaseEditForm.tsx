@@ -41,6 +41,7 @@ export default function CaseEditForm({
         deadline: draft.deadline || null,
         claude_project_url: draft.claude_project_url || null,
         drive_folder_url: draft.drive_folder_url || null,
+        website_url: draft.website_url?.trim() || null,
         logo_url: draft.logo_url || null,
         notes: draft.notes || null,
         brand_colors: draft.brand_colors ?? [],
@@ -189,6 +190,15 @@ export default function CaseEditForm({
           />
         </Field>
       </div>
+
+      <Field label="Website">
+        <input
+          className="input"
+          placeholder="https://example.com"
+          value={draft.website_url ?? ""}
+          onChange={(e) => setDraft({ ...draft, website_url: e.target.value })}
+        />
+      </Field>
 
       <Field label="Logo URL">
         <input

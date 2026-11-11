@@ -55,6 +55,8 @@ export interface Case {
   deadline: string | null;
   claude_project_url: string | null;
   drive_folder_url: string | null;
+  /** The deal's own website, shown as a link under its logo. */
+  website_url: string | null;
   brand_colors: BrandColor[];
   logo_url: string | null;
   notes: string | null;

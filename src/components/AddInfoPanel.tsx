@@ -142,7 +142,7 @@ export default function AddInfoPanel({
     <div className="space-y-4">
       <p className="text-sm text-slate-500">
         Drop documents you received on {caseData.name}, add a note, or both.
-        They&apos;ll go to the &ldquo;to review&rdquo; folder for this deal.
+        They&apos;ll be kept for this deal until someone reviews them.
       </p>
 
       <div
