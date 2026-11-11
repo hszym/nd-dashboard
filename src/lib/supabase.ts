@@ -72,35 +72,40 @@ export interface CaseDocument {
   type: DocumentType;
   status: DocumentStatus;
   file_url: string | null;
+  /** A PDF kept in the app (2-pager, Deck) so the intro email can attach it. */
+  attachment_url: string | null;
   updated_at: string;
 }
 
+/** Documents whose PDF the intro email attaches. */
+export const EMAIL_ATTACHMENT_TYPES: DocumentType[] = ["2-pager", "Deck"];
+
+/** The documents that have a PDF ready to attach to the intro email. */
+export function emailAttachments(documents: CaseDocument[]): CaseDocument[] {
+  return documents.filter(
+    (d) => EMAIL_ATTACHMENT_TYPES.includes(d.type) && d.attachment_url
+  );
+}
+
 /**
- * A document counts as available as soon as it has a link or file. (The old
- * status column is kept in the database but no longer shown or used.)
+ * A document counts as available as soon as it has a link. The Intro Email has
+ * no file of its own: it is available once there is a PDF to attach to it. (The
+ * old status column is kept in the database but no longer shown or used.)
  */
-export function isDocumentReady(doc: Pick<CaseDocument, "file_url">): boolean {
+export function isDocumentReady(doc: CaseDocument, all: CaseDocument[]): boolean {
+  if (doc.type === "Intro Email") return emailAttachments(all).length > 0;
   return Boolean(doc.file_url);
 }
 
-export const EMAIL_DOCUMENT_TYPES: DocumentType[] = ["Intro Email"];
+/** Public bucket for the PDFs attached to emails (25 MB, PDF only). */
+export const CASE_FILES_BUCKET = "case-files";
+export const CASE_FILE_MAX_BYTES = 25 * 1024 * 1024;
 
-export function isEmailDocumentType(type: DocumentType): boolean {
-  return EMAIL_DOCUMENT_TYPES.includes(type);
-}
-
-export const EMAIL_FILES_BUCKET = "case-emails";
-
-/** Storage path for the uploaded .msg/.eml file for a given case + document type. */
-export function emailStoragePath(
-  caseId: string,
-  type: DocumentType,
-  extension: string
-): string {
+/** Storage path for a document's email attachment; a fresh name per upload avoids stale caches. */
+export function attachmentStoragePath(caseId: string, type: DocumentType): string {
   const slug = type.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  return `${caseId}/${slug}.${extension}`;
+  return `${caseId}/${slug}-${Date.now()}.pdf`;
 }
-
 export type NdaCounterpartyType = "individual" | "company";
 
 export type NdaStatus = "Draft" | "Sent" | "Signed";

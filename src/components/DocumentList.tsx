@@ -5,23 +5,28 @@ import {
   supabase,
   CaseDocument,
   isDocumentReady,
-  isEmailDocumentType,
-  EMAIL_FILES_BUCKET,
-  emailStoragePath,
+  emailAttachments,
+  EMAIL_ATTACHMENT_TYPES,
+  CASE_FILES_BUCKET,
+  CASE_FILE_MAX_BYTES,
+  attachmentStoragePath,
 } from "@/lib/supabase";
+import IntroEmailPanel from "@/components/IntroEmailPanel";
+
+const SVG_PROPS = {
+  viewBox: "0 0 24 24",
+  className: "h-5 w-5",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+} as const;
 
 function FileIcon({ ready }: { ready: boolean }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg {...SVG_PROPS}>
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
       <path d="M14 3v5h5" />
       {ready ? <path d="m9 14 2 2 4-4" /> : <path d="M9 13h6M9 17h4" />}
@@ -29,34 +34,46 @@ function FileIcon({ ready }: { ready: boolean }) {
   );
 }
 
+function MailIcon() {
+  return (
+    <svg {...SVG_PROPS}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+
 /**
  * The deal's documents as cards. A card with a link opens the file straight
- * away in a new tab. Admins also get a pencil to change the link; team
- * members only see documents that have one.
+ * away in a new tab. Admins also get a pencil to change the link, and to keep
+ * a PDF of the 2-pager and the Deck in the app. The Intro Email card builds
+ * the email with those PDFs attached.
  */
 export default function DocumentList({
   caseId,
+  caseName,
   documents,
   editable,
   folderUrl,
   onUpdate,
 }: {
   caseId: string;
+  caseName: string;
   documents: CaseDocument[];
   editable: boolean;
   /** The deal's OneDrive folder, offered as a shortcut for admins. */
   folderUrl?: string | null;
   onUpdate: (
     doc: CaseDocument,
-    patch: Partial<Pick<CaseDocument, "file_url">>
+    patch: Partial<Pick<CaseDocument, "file_url" | "attachment_url">>
   ) => void;
 }) {
   const [openType, setOpenType] = useState<string | null>(null);
 
-  const shown = editable
-    ? documents
-    : documents.filter(isDocumentReady);
-  const ready = documents.filter(isDocumentReady).length;
+  const isReady = (d: CaseDocument) => isDocumentReady(d, documents);
+  const shown = editable ? documents : documents.filter(isReady);
+  const ready = documents.filter(isReady).length;
+  const attachments = emailAttachments(documents);
 
   if (!editable && shown.length === 0) {
     return <p className="text-sm text-slate-500">No documents available yet.</p>;
@@ -92,33 +109,57 @@ export default function DocumentList({
 
       <ul className="space-y-2">
         {shown.map((doc) => {
-          const isEmail = isEmailDocumentType(doc.type);
+          const isIntro = doc.type === "Intro Email";
+          const canAttach = EMAIL_ATTACHMENT_TYPES.includes(doc.type);
           const hasLink = Boolean(doc.file_url);
-          const expanded = editable && openType === doc.type;
+          const available = isReady(doc);
+          const expanded = openType === doc.type && (isIntro || editable);
+
+          const toggle = () => setOpenType(expanded ? null : doc.type);
+
+          const subtitle = isIntro
+            ? attachments.length > 0
+              ? `Email with the ${attachments.map((a) => a.type.toLowerCase()).join(" and the ")} attached`
+              : "Upload the 2-pager or Deck PDF to enable it"
+            : !hasLink && editable
+              ? "No link yet"
+              : canAttach && doc.attachment_url
+                ? "PDF ready for the intro email"
+                : null;
 
           const body = (
             <>
               <span
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                  hasLink ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
+                  available
+                    ? "bg-emerald-50 text-emerald-600"
+                    : "bg-slate-100 text-slate-400"
                 }`}
               >
-                <FileIcon ready={hasLink} />
+                {isIntro ? <MailIcon /> : <FileIcon ready={available} />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-slate-900">
                   {doc.type}
                 </span>
-                {!hasLink && (
-                  <span className="mt-0.5 block text-xs text-slate-400">
-                    {editable ? "No link yet" : ""}
+                {subtitle && (
+                  <span className="mt-0.5 block truncate text-xs text-slate-400">
+                    {subtitle}
                   </span>
                 )}
               </span>
-              {hasLink && (
-                <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
-                  {isEmail ? "Download ↓" : "Open ↗"}
-                </span>
+              {isIntro ? (
+                available && (
+                  <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
+                    {expanded ? "Close" : "Prepare ›"}
+                  </span>
+                )
+              ) : (
+                hasLink && (
+                  <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
+                    Open ↗
+                  </span>
+                )
               )}
             </>
           );
@@ -134,7 +175,7 @@ export default function DocumentList({
               }`}
             >
               <div className="flex items-center">
-                {hasLink ? (
+                {!isIntro && hasLink ? (
                   <a
                     href={doc.file_url!}
                     target="_blank"
@@ -146,16 +187,17 @@ export default function DocumentList({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setOpenType(expanded ? null : doc.type)}
-                    className={`${rowClass} hover:bg-slate-50`}
+                    onClick={toggle}
+                    disabled={isIntro && !available}
+                    className={`${rowClass} hover:bg-slate-50 disabled:cursor-default disabled:hover:bg-transparent`}
                   >
                     {body}
                   </button>
                 )}
-                {editable && (
+                {editable && !isIntro && (
                   <button
                     type="button"
-                    onClick={() => setOpenType(expanded ? null : doc.type)}
+                    onClick={toggle}
                     aria-label={`Edit ${doc.type}`}
                     aria-expanded={expanded}
                     className={`mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-900 ${
@@ -180,19 +222,40 @@ export default function DocumentList({
               </div>
 
               {expanded && (
-                <div className="space-y-3 border-t border-slate-100 p-3">
-                  {isEmail ? (
-                    <EmailFileUpload
-                      caseId={caseId}
-                      docType={doc.type}
-                      value={doc.file_url}
-                      onSave={(url) => onUpdate(doc, { file_url: url })}
+                <div className="space-y-4 border-t border-slate-100 p-3">
+                  {isIntro ? (
+                    <IntroEmailPanel
+                      caseName={caseName}
+                      sources={attachments.map((a) => ({
+                        label: a.type,
+                        url: a.attachment_url!,
+                      }))}
                     />
                   ) : (
-                    <EditableUrl
-                      value={doc.file_url}
-                      onSave={(url) => onUpdate(doc, { file_url: url })}
-                    />
+                    <>
+                      <div>
+                        <div className="mb-1 text-xs font-medium text-slate-500">
+                          Link (OneDrive)
+                        </div>
+                        <EditableUrl
+                          value={doc.file_url}
+                          onSave={(url) => onUpdate(doc, { file_url: url })}
+                        />
+                      </div>
+                      {canAttach && (
+                        <div>
+                          <div className="mb-1 text-xs font-medium text-slate-500">
+                            PDF for the intro email
+                          </div>
+                          <PdfAttachmentUpload
+                            caseId={caseId}
+                            docType={doc.type}
+                            value={doc.attachment_url}
+                            onSave={(url) => onUpdate(doc, { attachment_url: url })}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -276,8 +339,6 @@ function EditableUrl({
   );
 }
 
-const EMAIL_EXTENSIONS = ["msg", "eml"];
-
 function fileNameFromUrl(url: string): string {
   try {
     const path = new URL(url).pathname;
@@ -287,7 +348,8 @@ function fileNameFromUrl(url: string): string {
   }
 }
 
-function EmailFileUpload({
+/** Upload (or replace/remove) the PDF the intro email attaches for a document. */
+function PdfAttachmentUpload({
   caseId,
   docType,
   value,
@@ -305,42 +367,60 @@ function EmailFileUpload({
 
   async function handleFile(file: File | undefined | null) {
     if (!file) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!EMAIL_EXTENSIONS.includes(ext)) {
-      setError("Only .msg or .eml files.");
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setError("Only PDF files.");
+      return;
+    }
+    if (file.size > CASE_FILE_MAX_BYTES) {
+      setError("That file is over 25 MB.");
       return;
     }
     setUploading(true);
     setError(null);
-    const path = emailStoragePath(caseId, docType, ext);
+    const path = attachmentStoragePath(caseId, docType);
     const { error: upErr } = await supabase.storage
-      .from(EMAIL_FILES_BUCKET)
-      .upload(path, file, {
-        upsert: true,
-        contentType:
-          ext === "msg" ? "application/vnd.ms-outlook" : "message/rfc822",
-      });
+      .from(CASE_FILES_BUCKET)
+      .upload(path, file, { contentType: "application/pdf" });
     if (upErr) {
       setUploading(false);
       setError(upErr.message);
       return;
     }
-    const { data } = supabase.storage.from(EMAIL_FILES_BUCKET).getPublicUrl(path);
+    const { data } = supabase.storage.from(CASE_FILES_BUCKET).getPublicUrl(path);
     setUploading(false);
-    onSave(`${data.publicUrl}?download=${encodeURIComponent(file.name)}`);
+    onSave(data.publicUrl);
   }
+
+  const input = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept=".pdf,application/pdf"
+      className="hidden"
+      onChange={(e) => {
+        handleFile(e.target.files?.[0]);
+        e.target.value = "";
+      }}
+    />
+  );
 
   if (value) {
     return (
       <div className="flex flex-wrap items-center gap-3">
-        <span className="min-w-0 max-w-[220px] truncate text-xs text-slate-700">
+        <a
+          href={value}
+          target="_blank"
+          rel="noreferrer"
+          className="min-w-0 max-w-[220px] truncate text-xs text-slate-700 hover:underline"
+        >
           📎 {fileNameFromUrl(value)}
-        </span>
+        </a>
         <button
           onClick={() => inputRef.current?.click()}
+          disabled={uploading}
           className="text-xs text-slate-400 hover:text-slate-900"
         >
-          Replace
+          {uploading ? "Uploading…" : "Replace"}
         </button>
         <button
           onClick={() => onSave(null)}
@@ -348,13 +428,7 @@ function EmailFileUpload({
         >
           Remove
         </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".msg,.eml"
-          className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
+        {input}
         {error && <span className="text-xs text-red-600">{error}</span>}
       </div>
     );
@@ -380,15 +454,9 @@ function EmailFileUpload({
             : "border-slate-300 text-slate-400 hover:text-slate-600"
         }`}
       >
-        {uploading ? "Uploading…" : "Drop .msg / .eml here, or click"}
+        {uploading ? "Uploading…" : "Drop the PDF here, or click"}
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".msg,.eml"
-        className="hidden"
-        onChange={(e) => handleFile(e.target.files?.[0])}
-      />
+      {input}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );

@@ -48,6 +48,7 @@ export default function CaseDetailPage() {
           type: t,
           status: "Missing" as DocumentStatus,
           file_url: null,
+          attachment_url: null,
           updated_at: c.created_at,
         }
     );
@@ -62,7 +63,7 @@ export default function CaseDetailPage() {
 
   async function updateDocument(
     doc: CaseDocument,
-    patch: Partial<Pick<CaseDocument, "file_url">>
+    patch: Partial<Pick<CaseDocument, "file_url" | "attachment_url">>
   ) {
     if (!caseData) return;
     // The old status column is no longer shown, but keep it consistent with
@@ -85,6 +86,7 @@ export default function CaseDetailPage() {
           type: doc.type,
           status: full.status,
           file_url: patch.file_url ?? null,
+          attachment_url: patch.attachment_url ?? null,
         })
         .select()
         .single();

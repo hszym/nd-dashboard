@@ -44,7 +44,7 @@ export default function DealPager({
   role: "admin" | "team";
   onUpdateDocument: (
     doc: CaseDocument,
-    patch: Partial<Pick<CaseDocument, "file_url">>
+    patch: Partial<Pick<CaseDocument, "file_url" | "attachment_url">>
   ) => void;
   onReload: () => void;
   onDeleted: () => void;
@@ -114,7 +114,7 @@ export default function DealPager({
     setSheet(key);
   }
 
-  const done = documents.filter(isDocumentReady).length;
+  const done = documents.filter((d) => isDocumentReady(d, documents)).length;
   const subline = [
     caseData.sector,
     caseData.sponsor && `Sponsor: ${caseData.sponsor}`,
@@ -282,6 +282,7 @@ export default function DealPager({
           caseId={caseData.id}
           documents={documents}
           editable={isAdmin}
+          caseName={caseData.name}
           folderUrl={caseData.onedrive_url}
           onUpdate={onUpdateDocument}
         />

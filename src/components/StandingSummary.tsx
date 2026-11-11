@@ -11,7 +11,7 @@ import {
 import { formatAmount, formatDate, daysUntil } from "@/lib/utils";
 
 function compute(caseData: Case, documents: CaseDocument[], lps: Nda[] | null) {
-  const done = documents.filter(isDocumentReady).length;
+  const done = documents.filter((d) => isDocumentReady(d, documents)).length;
   const target = caseData.amount_target;
   const remaining = caseData.amount_remaining;
   const raised =
