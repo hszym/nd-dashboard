@@ -19,11 +19,20 @@ export default function AppChrome({
 }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
+  // A single deal page (/cases/<slug>) shares home's dark glass look; the
+  // create/track forms stay on the light layout.
+  const isDeal = /^\/cases\/[^/]+\/?$/.test(pathname) && pathname !== "/cases/new";
+  const immersive = isHome || isDeal;
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
-      {isHome ? (
+      {immersive ? (
         <div className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-4 rounded-full glass px-4 py-2 text-xs text-white">
+          {isDeal && (
+            <Link href="/" className="font-medium hover:text-white/80">
+              ← All deals
+            </Link>
+          )}
           {role === "admin" && (
             <Link href="/users" className="font-medium hover:text-white/80">
               Manage users
@@ -64,13 +73,15 @@ export default function AppChrome({
         className={`mx-auto w-full flex-1 ${
           isHome
             ? "flex flex-col justify-center px-0 pb-16 pt-[max(3rem,calc(env(safe-area-inset-top)+2rem))]"
-            : "max-w-6xl px-6 py-8"
+            : isDeal
+              ? "px-0 pb-16 pt-[max(4.75rem,calc(env(safe-area-inset-top)+3.75rem))]"
+              : "max-w-6xl px-6 py-8"
         }`}
       >
         {children}
       </main>
 
-      {!isHome && (
+      {!immersive && (
         <footer className="relative z-10 border-t border-slate-200/60 bg-white/60 py-4 text-center text-xs text-slate-500 backdrop-blur-xl">
           Internal tool — not for external distribution
         </footer>

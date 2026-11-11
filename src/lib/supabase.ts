@@ -161,6 +161,20 @@ export interface Nda {
   updated_at: string;
 }
 
+export type QuestionStatus = "open" | "answered";
+
+/** A shared open question on a deal (table `case_questions`). */
+export interface CaseQuestion {
+  id: string;
+  case_id: string;
+  question: string;
+  answer: string | null;
+  status: QuestionStatus;
+  created_by: string | null;
+  created_at: string;
+  answered_at: string | null;
+}
+
 export const NDA_SIGNED_FILES_BUCKET = "nda-files";
 
 /** Storage path for the uploaded signed NDA file for a given NDA row. */
