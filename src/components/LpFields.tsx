@@ -146,7 +146,7 @@ export default function LpFields({
           </div>
         </LpSection>
       ) : (
-        <LpSection title="Your name">
+        <LpSection title="Your details">
           <div className="grid gap-4 sm:grid-cols-2">
             <LpField label="First name" required={strict}>
               <input
@@ -163,6 +163,15 @@ export default function LpFields({
               />
             </LpField>
           </div>
+          <LpField label="Address" required={strict}>
+            <input
+              className="input"
+              autoComplete="street-address"
+              value={values.placeAddress}
+              onChange={(e) => set("placeAddress", e.target.value)}
+              placeholder="Street, postal code, city, country"
+            />
+          </LpField>
         </LpSection>
       )}
 

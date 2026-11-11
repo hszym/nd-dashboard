@@ -85,6 +85,7 @@ export function validateLp(v: LpValues, strict: boolean): string | null {
   if (!v.email) return "Please enter an email address.";
   if (v.counterpartyType === "individual") {
     if (!v.firstName || !v.lastName) return "Please enter your first and last name.";
+    if (!v.placeAddress) return "Please enter your address.";
     return null;
   }
   const required: [string, string][] = [
@@ -102,7 +103,7 @@ export function validateLp(v: LpValues, strict: boolean): string | null {
   return null;
 }
 
-/** Maps the form to `ndas` columns, nulling company-only fields for individuals. */
+/** Maps the form to `ndas` columns, nulling company-only fields for individuals. The address is kept for both. */
 export function lpValuesToRow(v: LpValues) {
   const company = v.counterpartyType === "company";
   const individual = v.counterpartyType === "individual";
@@ -113,7 +114,7 @@ export function lpValuesToRow(v: LpValues) {
     company_name: company ? v.companyName || null : null,
     legal_form: company ? v.legalForm || null : null,
     jurisdiction: company ? v.jurisdiction || null : null,
-    place_address: company ? v.placeAddress || null : null,
+    place_address: v.placeAddress || null,
     registration_agency: company ? v.registrationAgency || null : null,
     registration_number: company ? v.registrationNumber || null : null,
     tax_id: company ? v.taxId || null : null,
