@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   supabase,
   Case,
-  BrandColor,
   Stage,
   COMMON_CURRENCIES,
 } from "@/lib/supabase";
@@ -39,12 +38,8 @@ export default function CaseEditForm({
         amount_remaining: draft.amount_remaining ?? null,
         currency: draft.currency?.trim().toUpperCase() || "EUR",
         deadline: draft.deadline || null,
-        claude_project_url: draft.claude_project_url || null,
-        drive_folder_url: draft.drive_folder_url || null,
-        website_url: draft.website_url?.trim() || null,
-        logo_url: draft.logo_url || null,
+        onedrive_url: draft.onedrive_url?.trim() || null,
         notes: draft.notes || null,
-        brand_colors: draft.brand_colors ?? [],
       })
       .eq("id", caseData.id);
     setSaving(false);
@@ -64,28 +59,6 @@ export default function CaseEditForm({
       return;
     await supabase.from("cases").delete().eq("id", caseData.id);
     onDeleted();
-  }
-
-  function updateColor(i: number, field: keyof BrandColor, value: string) {
-    setDraft((prev) => {
-      const colors = [...(prev.brand_colors ?? [])];
-      colors[i] = { ...colors[i], [field]: value };
-      return { ...prev, brand_colors: colors };
-    });
-  }
-
-  function addColor() {
-    setDraft((prev) => ({
-      ...prev,
-      brand_colors: [...(prev.brand_colors ?? []), { label: "", hex: "" }],
-    }));
-  }
-
-  function removeColor(i: number) {
-    setDraft((prev) => ({
-      ...prev,
-      brand_colors: (prev.brand_colors ?? []).filter((_, idx) => idx !== i),
-    }));
   }
 
   return (
@@ -171,84 +144,18 @@ export default function CaseEditForm({
             }
           />
         </Field>
-        <Field label="Claude project URL">
-          <input
-            className="input"
-            value={draft.claude_project_url ?? ""}
-            onChange={(e) =>
-              setDraft({ ...draft, claude_project_url: e.target.value })
-            }
-          />
-        </Field>
-        <Field label="Drive folder URL">
-          <input
-            className="input"
-            value={draft.drive_folder_url ?? ""}
-            onChange={(e) =>
-              setDraft({ ...draft, drive_folder_url: e.target.value })
-            }
-          />
-        </Field>
       </div>
 
-      <Field label="Website">
+      <Field label="OneDrive folder">
         <input
           className="input"
-          placeholder="https://example.com"
-          value={draft.website_url ?? ""}
-          onChange={(e) => setDraft({ ...draft, website_url: e.target.value })}
+          placeholder="https://…sharepoint.com/…"
+          value={draft.onedrive_url ?? ""}
+          onChange={(e) => setDraft({ ...draft, onedrive_url: e.target.value })}
         />
-      </Field>
-
-      <Field label="Logo URL">
-        <input
-          className="input"
-          value={draft.logo_url ?? ""}
-          onChange={(e) => setDraft({ ...draft, logo_url: e.target.value })}
-        />
-      </Field>
-
-      <Field label="Brand colors">
-        <div className="space-y-2">
-          {(draft.brand_colors ?? []).map((c, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                className="input flex-1"
-                placeholder="Label"
-                value={c.label}
-                onChange={(e) => updateColor(i, "label", e.target.value)}
-              />
-              <input
-                className="input w-28"
-                placeholder="1C3D5A"
-                value={c.hex}
-                onChange={(e) => updateColor(i, "hex", e.target.value.replace("#", ""))}
-              />
-              <span
-                className="h-8 w-8 shrink-0 rounded-md border border-slate-200"
-                style={{
-                  backgroundColor: /^[0-9a-fA-F]{6}$/.test(c.hex)
-                    ? `#${c.hex}`
-                    : "transparent",
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => removeColor(i)}
-                className="text-xs text-slate-400 hover:text-red-500"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addColor}
-            className="text-xs font-medium text-slate-600 hover:text-slate-900"
-          >
-            + Add color
-          </button>
-        </div>
+        <span className="mt-1 block text-xs normal-case tracking-normal text-slate-400">
+          Claude Code works inside this folder; its .md files hold the deal details.
+        </span>
       </Field>
 
       <Field label="Notes">

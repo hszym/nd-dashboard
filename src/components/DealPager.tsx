@@ -13,6 +13,7 @@ import CaseLogo from "@/components/CaseLogo";
 import Sheet from "@/components/Sheet";
 import DocumentList from "@/components/DocumentList";
 import CaseEditForm from "@/components/CaseEditForm";
+import BrandKit from "@/components/BrandKit";
 import { StandingTile, StandingDetail } from "@/components/StandingSummary";
 import SendNdaPanel from "@/components/SendNdaPanel";
 import OpenQuestions from "@/components/OpenQuestions";
@@ -228,6 +229,13 @@ export default function DealPager({
             </div>
 
             <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
+              Brand Kit
+            </h2>
+            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
+              <BrandKit caseData={caseData} isAdmin={isAdmin} onSaved={onReload} />
+            </div>
+
+            <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
               Investors
             </h2>
             <div className="overflow-x-auto rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
@@ -408,43 +416,15 @@ function InfoView({
         )}
       </dl>
 
-      {isAdmin && (caseData.claude_project_url || caseData.drive_folder_url) && (
-        <div className="flex gap-4">
-          {caseData.claude_project_url && (
-            <a
-              href={caseData.claude_project_url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-600 underline"
-            >
-              Claude project ↗
-            </a>
-          )}
-          {caseData.drive_folder_url && (
-            <a
-              href={caseData.drive_folder_url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-600 underline"
-            >
-              Drive folder ↗
-            </a>
-          )}
-        </div>
-      )}
-
-      {isAdmin && caseData.brand_colors?.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-wide text-slate-400">Brand</span>
-          {caseData.brand_colors.map((c, i) => (
-            <span
-              key={i}
-              title={`${c.label} #${c.hex}`}
-              className="h-5 w-5 rounded-full border border-slate-200"
-              style={{ backgroundColor: `#${c.hex.replace("#", "")}` }}
-            />
-          ))}
-        </div>
+      {isAdmin && caseData.onedrive_url && (
+        <a
+          href={caseData.onedrive_url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-block text-blue-600 underline"
+        >
+          OneDrive folder ↗
+        </a>
       )}
 
       {isAdmin && caseData.notes && (

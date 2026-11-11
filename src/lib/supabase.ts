@@ -55,6 +55,8 @@ export interface Case {
   deadline: string | null;
   claude_project_url: string | null;
   drive_folder_url: string | null;
+  /** The deal's OneDrive folder; Claude Code works inside it (MD files hold the details). */
+  onedrive_url: string | null;
   /** The deal's own website, shown as a link under its logo. */
   website_url: string | null;
   brand_colors: BrandColor[];
@@ -249,6 +251,10 @@ export const NDA_GENERATED_PDFS_BUCKET = "nda-generated-pdfs";
 export function ndaGeneratedPdfPath(ndaId: string): string {
   return `${ndaId}/nda.pdf`;
 }
+
+/** Public bucket for uploaded deal logos (5 MB, images only). */
+export const CASE_LOGOS_BUCKET = "case-logos";
+export const CASE_LOGO_MAX_BYTES = 5 * 1024 * 1024;
 
 export const NDA_TEMPLATES_BUCKET = "nda-templates";
 

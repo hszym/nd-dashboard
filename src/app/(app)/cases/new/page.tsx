@@ -10,6 +10,7 @@ import {
   COMMON_CURRENCIES,
 } from "@/lib/supabase";
 import { slugify } from "@/lib/utils";
+import LogoUpload from "@/components/LogoUpload";
 
 const DEFAULT_COLORS: BrandColor[] = [
   { label: "Primary", hex: "1C3D5A" },
@@ -26,9 +27,9 @@ export default function NewCasePage() {
   const [amountRemaining, setAmountRemaining] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [deadline, setDeadline] = useState("");
-  const [claudeProjectUrl, setClaudeProjectUrl] = useState("");
-  const [driveFolderUrl, setDriveFolderUrl] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
+  const [onedriveUrl, setOnedriveUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoKey] = useState(() => crypto.randomUUID());
   const [notes, setNotes] = useState("");
   const [colors, setColors] = useState<BrandColor[]>(DEFAULT_COLORS);
   const [saving, setSaving] = useState(false);
@@ -72,9 +73,8 @@ export default function NewCasePage() {
         amount_remaining: amountRemaining ? Number(amountRemaining) : null,
         currency: currency.trim().toUpperCase() || "EUR",
         deadline: deadline || null,
-        claude_project_url: claudeProjectUrl.trim() || null,
-        drive_folder_url: driveFolderUrl.trim() || null,
-        logo_url: logoUrl.trim() || null,
+        onedrive_url: onedriveUrl.trim() || null,
+        logo_url: logoUrl,
         notes: notes.trim() || null,
         brand_colors: cleanColors,
       })
@@ -192,32 +192,20 @@ export default function NewCasePage() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Claude project URL">
-            <input
-              className="input"
-              value={claudeProjectUrl}
-              onChange={(e) => setClaudeProjectUrl(e.target.value)}
-              placeholder="https://claude.ai/project/…"
-            />
-          </Field>
-          <Field label="Drive folder URL">
-            <input
-              className="input"
-              value={driveFolderUrl}
-              onChange={(e) => setDriveFolderUrl(e.target.value)}
-              placeholder="https://drive.google.com/drive/folders/…"
-            />
-          </Field>
-        </div>
-
-        <Field label="Logo URL">
+        <Field label="OneDrive folder">
           <input
             className="input"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://…/logo.png"
+            value={onedriveUrl}
+            onChange={(e) => setOnedriveUrl(e.target.value)}
+            placeholder="https://…sharepoint.com/…"
           />
+          <span className="mt-1 block text-xs normal-case tracking-normal text-slate-400">
+            Claude Code works inside this folder; its .md files hold the deal details.
+          </span>
+        </Field>
+
+        <Field label="Logo">
+          <LogoUpload value={logoUrl} storageKey={logoKey} onChange={setLogoUrl} />
         </Field>
 
         <Field label="Brand colors">
