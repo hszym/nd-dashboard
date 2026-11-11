@@ -139,6 +139,13 @@ export default function CaseTrack({
                 value={templates.nda_template_company_url}
                 onSave={(url) => updateTemplate("nda_template_company_url", url)}
               />
+              <a
+                href={`/api/ndas/template?caseId=${caseData.id}&type=company`}
+                className="mt-2 inline-block text-xs font-medium text-slate-600 hover:text-slate-900"
+              >
+                ↓ Download template
+                {templates.nda_template_company_url ? "" : " (shared default)"}
+              </a>
             </div>
             <div>
               <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -152,6 +159,14 @@ export default function CaseTrack({
                   updateTemplate("nda_template_individual_url", url)
                 }
               />
+              {templates.nda_template_individual_url && (
+                <a
+                  href={`/api/ndas/template?caseId=${caseData.id}&type=individual`}
+                  className="mt-2 inline-block text-xs font-medium text-slate-600 hover:text-slate-900"
+                >
+                  ↓ Download template
+                </a>
+              )}
             </div>
           </div>
         </div>
