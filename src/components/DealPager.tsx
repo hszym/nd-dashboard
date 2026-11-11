@@ -9,6 +9,7 @@ import {
   Nda,
 } from "@/lib/supabase";
 import StageBadge from "@/components/StageBadge";
+import CaseLogo from "@/components/CaseLogo";
 import Sheet from "@/components/Sheet";
 import DocumentList from "@/components/DocumentList";
 import CaseEditForm from "@/components/CaseEditForm";
@@ -112,7 +113,6 @@ export default function DealPager({
   }
 
   const done = documents.filter((d) => d.status === "Done").length;
-  const tint = caseData.brand_colors?.[0]?.hex;
   const subline = [
     caseData.sector,
     caseData.sponsor && `Sponsor: ${caseData.sponsor}`,
@@ -149,23 +149,11 @@ export default function DealPager({
         <section className="w-full shrink-0 snap-center px-5">
           <div className="mx-auto max-w-md space-y-4">
             <div className="flex flex-col items-center text-center">
-              <div
-                className="relative h-28 w-28 overflow-hidden rounded-[1.75rem] bg-white/60 shadow-xl"
-                style={!caseData.logo_url && tint ? { backgroundColor: `#${tint.replace("#", "")}` } : undefined}
-              >
-                {caseData.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={caseData.logo_url}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="absolute inset-0 flex items-center justify-center text-4xl font-semibold">
-                    {caseData.name.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-              </div>
+              <CaseLogo
+                project={caseData}
+                className="h-28 w-28 rounded-[1.75rem] shadow-xl"
+                monogramClassName="text-4xl"
+              />
               <h1 className="mt-4 text-3xl font-semibold tracking-tight">
                 {caseData.name}
               </h1>

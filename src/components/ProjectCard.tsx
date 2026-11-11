@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import type { Case } from "@/lib/supabase";
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-}
+import CaseLogo from "@/components/CaseLogo";
 
 const STAGE_DOT: Record<string, string> = {
   "Under Review": "bg-amber-400",
@@ -27,8 +19,6 @@ export default function ProjectCard({
   active: boolean;
   onSelect: () => void;
 }) {
-  const tint = project.brand_colors?.[0]?.hex;
-
   return (
     <Link
       href={`/cases/${project.slug}`}
@@ -43,25 +33,12 @@ export default function ProjectCard({
       draggable={false}
       className="glass group relative flex aspect-[4/5] w-full flex-col overflow-hidden rounded-[2.25rem] p-5 shadow-[0_30px_70px_-25px_rgba(15,23,42,0.35)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
     >
-      {/* Logo fills the whole tile; the tile's rounding clips the image. */}
-      <div
-        className="relative isolate aspect-square w-full flex-none transform-gpu overflow-hidden rounded-[1.75rem] bg-white/60 shadow-lg"
-        style={!project.logo_url && tint ? { backgroundColor: tint } : undefined}
-      >
-        {project.logo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={project.logo_url}
-            alt=""
-            draggable={false}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <span className="absolute inset-0 flex items-center justify-center text-6xl font-semibold tracking-tight text-white">
-            {initials(project.name)}
-          </span>
-        )}
-      </div>
+      {/* Logo fills the whole tile (or sits padded if it's not square). */}
+      <CaseLogo
+        project={project}
+        className="aspect-square w-full flex-none rounded-[1.75rem] shadow-lg"
+        monogramClassName="text-6xl"
+      />
 
       <div className="flex flex-1 flex-col items-center justify-center text-center">
         <h2 className="line-clamp-2 text-2xl font-semibold tracking-tight text-slate-900">
