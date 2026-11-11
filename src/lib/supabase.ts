@@ -161,6 +161,22 @@ export interface Nda {
   updated_at: string;
 }
 
+export type LpRequestStatus = "pending" | "submitted" | "revoked";
+
+/** A private single-use link an LP opens to fill in their own details (`lp_requests`). */
+export interface LpRequest {
+  id: string;
+  case_id: string;
+  token: string;
+  status: LpRequestStatus;
+  data: unknown | null;
+  nda_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  expires_at: string;
+  submitted_at: string | null;
+}
+
 export type QuestionStatus = "open" | "answered";
 
 /** A shared open question on a deal (table `case_questions`). */

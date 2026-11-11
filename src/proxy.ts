@@ -3,6 +3,9 @@ import { createServerClient } from "@supabase/ssr";
 import { getRole } from "@/lib/auth";
 
 const PUBLIC_PATHS = ["/login"];
+// Private single-use links LPs open without an account (the token in the URL
+// is the credential); the API routes behind them only touch that one request.
+const PUBLIC_PREFIXES = ["/lp-request/", "/api/lp-requests/"];
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
@@ -35,7 +38,10 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (PUBLIC_PATHS.includes(pathname)) {
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
+  ) {
     return response;
   }
 

@@ -3,43 +3,20 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  supabase,
-  Case,
-  NdaCounterpartyType,
-  LP_STATUSES,
-  LpStatus,
-  Tier,
-  TIERS,
-} from "@/lib/supabase";
+import { supabase, Case, LP_STATUSES, LpStatus, Tier, TIERS } from "@/lib/supabase";
+import { emptyLpValues, LpValues, lpValuesToRow, validateLp } from "@/lib/lp";
+import LpFields, { LpField, LpSection } from "@/components/LpFields";
+import RequestFromLp from "@/components/RequestFromLp";
 
 export default function AddLpPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [counterpartyType, setCounterpartyType] =
-    useState<NdaCounterpartyType>("company");
 
+  const [values, setValues] = useState<LpValues>(emptyLpValues);
   const [lpStatus, setLpStatus] = useState<LpStatus>("Contacted");
   const [tier, setTier] = useState<Tier | "">("");
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-
-  const [companyName, setCompanyName] = useState("");
-  const [legalForm, setLegalForm] = useState("");
-  const [jurisdiction, setJurisdiction] = useState("");
-  const [placeAddress, setPlaceAddress] = useState("");
-  const [registrationAgency, setRegistrationAgency] = useState("");
-  const [registrationNumber, setRegistrationNumber] = useState("");
-  const [taxId, setTaxId] = useState("");
-  const [representativeName, setRepresentativeName] = useState("");
-  const [representativePosition, setRepresentativePosition] = useState("");
-  const [representativeName2, setRepresentativeName2] = useState("");
-  const [representativePosition2, setRepresentativePosition2] = useState("");
-
-  const [email, setEmail] = useState("");
   const [signingPlace, setSigningPlace] = useState("Luxembourg");
   const [signingDate, setSigningDate] = useState(
     () => new Date().toISOString().slice(0, 10)
@@ -68,16 +45,13 @@ export default function AddLpPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!caseData) return;
+    const problem = validateLp(values, false);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     if (tier === "") {
       setError("Pick a tier.");
-      return;
-    }
-    if (counterpartyType === "individual" && !firstName.trim() && !lastName.trim()) {
-      setError("Enter the LP's name.");
-      return;
-    }
-    if (counterpartyType === "company" && !companyName.trim()) {
-      setError("Enter the LP's company name.");
       return;
     }
 
@@ -88,25 +62,9 @@ export default function AddLpPage() {
       .from("ndas")
       .insert({
         case_id: caseData.id,
-        counterparty_type: counterpartyType,
+        ...lpValuesToRow(values),
         lp_status: lpStatus,
         tier,
-        first_name: counterpartyType === "individual" ? firstName.trim() || null : null,
-        last_name: counterpartyType === "individual" ? lastName.trim() || null : null,
-        company_name: counterpartyType === "company" ? companyName.trim() || null : null,
-        legal_form: counterpartyType === "company" ? legalForm.trim() || null : null,
-        jurisdiction: counterpartyType === "company" ? jurisdiction.trim() || null : null,
-        place_address: counterpartyType === "company" ? placeAddress.trim() || null : null,
-        registration_agency:
-          counterpartyType === "company" ? registrationAgency.trim() || null : null,
-        registration_number:
-          counterpartyType === "company" ? registrationNumber.trim() || null : null,
-        tax_id: counterpartyType === "company" ? taxId.trim() || null : null,
-        representative_name: representativeName.trim() || null,
-        representative_position: representativePosition.trim() || null,
-        representative_name_2: representativeName2.trim() || null,
-        representative_position_2: representativePosition2.trim() || null,
-        email: email.trim() || null,
         signing_place: signingPlace.trim() || "Luxembourg",
         signing_date: signingDate,
         status: "Draft",
@@ -139,10 +97,10 @@ export default function AddLpPage() {
 
   if (notFound) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-        <p className="text-slate-600">Project not found.</p>
+      <div className="rounded-[1.75rem] bg-white p-8 text-center shadow-sm">
+        <p className="text-slate-600">Deal not found.</p>
         <Link href="/" className="mt-2 inline-block text-sm text-slate-900 underline">
-          Back to projects
+          Back to deals
         </Link>
       </div>
     );
@@ -150,240 +108,108 @@ export default function AddLpPage() {
   if (!caseData) return <p className="text-sm text-slate-500">Loading…</p>;
 
   return (
-    <div className="max-w-2xl">
+    <div className="mx-auto max-w-2xl">
       <Link
         href={`/cases/${caseData.slug}?tab=track`}
         className="text-sm text-slate-500 hover:text-slate-900"
       >
         ← {caseData.name}
       </Link>
-      <h1 className="mt-3 text-xl font-semibold text-slate-900">Add LP</h1>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
+        Add an LP
+      </h1>
       <p className="mt-1 text-sm text-slate-500">
         Adds an LP to {caseData.name} and creates their NDA.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Tier *">
-            <select
-              className="input"
-              value={tier}
-              onChange={(e) =>
-                setTier(e.target.value ? (Number(e.target.value) as Tier) : "")
-              }
+      <div className="mt-6 space-y-4">
+        <RequestFromLp caseData={caseData} />
+      </div>
+
+      <div className="my-6 flex items-center gap-3 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-slate-200" />
+        or enter the details yourself
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <LpFields values={values} onChange={setValues} strict={false} />
+
+        <LpSection title="Pipeline">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LpField label="Tier" required>
+              <select
+                className="input"
+                value={tier}
+                onChange={(e) =>
+                  setTier(e.target.value ? (Number(e.target.value) as Tier) : "")
+                }
+              >
+                <option value="">Select a tier…</option>
+                {TIERS.map((t) => (
+                  <option key={t.value} value={t.value} title={t.description}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </LpField>
+            <LpField label="Status">
+              <select
+                className="input"
+                value={lpStatus}
+                onChange={(e) => setLpStatus(e.target.value as LpStatus)}
+              >
+                {LP_STATUSES.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </LpField>
+          </div>
+        </LpSection>
+
+        <LpSection title="NDA details">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LpField label="Signing place">
+              <input
+                className="input"
+                value={signingPlace}
+                onChange={(e) => setSigningPlace(e.target.value)}
+              />
+            </LpField>
+            <LpField label="Signing date">
+              <input
+                className="input"
+                type="date"
+                value={signingDate}
+                onChange={(e) => setSigningDate(e.target.value)}
+              />
+            </LpField>
+          </div>
+        </LpSection>
+
+        <div className="sticky bottom-4 z-10 space-y-2 pt-2">
+          {error && (
+            <p className="rounded-2xl bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm">
+              {error}
+            </p>
+          )}
+          <div className="flex items-center justify-between gap-3 rounded-full bg-white/90 p-2 pl-5 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+            <Link
+              href={`/cases/${caseData.slug}?tab=track`}
+              className="text-sm text-slate-500 hover:text-slate-900"
             >
-              <option value="">Select a tier…</option>
-              {TIERS.map((t) => (
-                <option key={t.value} value={t.value} title={t.description}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Status">
-            <select
-              className="input"
-              value={lpStatus}
-              onChange={(e) => setLpStatus(e.target.value as LpStatus)}
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
             >
-              {LP_STATUSES.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <Field label="LP type">
-          <div className="flex gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={counterpartyType === "company"}
-                onChange={() => setCounterpartyType("company")}
-              />
-              Company
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={counterpartyType === "individual"}
-                onChange={() => setCounterpartyType("individual")}
-              />
-              Individual
-            </label>
+              {saving ? "Adding…" : "Add LP"}
+            </button>
           </div>
-        </Field>
-
-        {counterpartyType === "individual" ? (
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="First name">
-              <input
-                className="input"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-            </Field>
-            <Field label="Last name">
-              <input
-                className="input"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </Field>
-          </div>
-        ) : (
-          <>
-            <Field label="Company name">
-              <input
-                className="input"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Acme Holdings SA"
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Legal form">
-                <input
-                  className="input"
-                  value={legalForm}
-                  onChange={(e) => setLegalForm(e.target.value)}
-                  placeholder="société anonyme"
-                />
-              </Field>
-              <Field label="Jurisdiction">
-                <input
-                  className="input"
-                  value={jurisdiction}
-                  onChange={(e) => setJurisdiction(e.target.value)}
-                  placeholder="Luxembourg"
-                />
-              </Field>
-            </div>
-            <Field label="Registered address">
-              <input
-                className="input"
-                value={placeAddress}
-                onChange={(e) => setPlaceAddress(e.target.value)}
-              />
-            </Field>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Registration agency">
-                <input
-                  className="input"
-                  value={registrationAgency}
-                  onChange={(e) => setRegistrationAgency(e.target.value)}
-                  placeholder="RCS Luxembourg"
-                />
-              </Field>
-              <Field label="Registration number">
-                <input
-                  className="input"
-                  value={registrationNumber}
-                  onChange={(e) => setRegistrationNumber(e.target.value)}
-                />
-              </Field>
-              <Field label="Tax ID">
-                <input
-                  className="input"
-                  value={taxId}
-                  onChange={(e) => setTaxId(e.target.value)}
-                />
-              </Field>
-            </div>
-          </>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Representative name">
-            <input
-              className="input"
-              value={representativeName}
-              onChange={(e) => setRepresentativeName(e.target.value)}
-            />
-          </Field>
-          <Field label="Representative position">
-            <input
-              className="input"
-              value={representativePosition}
-              onChange={(e) => setRepresentativePosition(e.target.value)}
-            />
-          </Field>
-        </div>
-
-        {counterpartyType === "company" && (
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Second representative name (optional)">
-              <input
-                className="input"
-                value={representativeName2}
-                onChange={(e) => setRepresentativeName2(e.target.value)}
-                placeholder="Only if this deal needs a second signatory"
-              />
-            </Field>
-            <Field label="Second representative position (optional)">
-              <input
-                className="input"
-                value={representativePosition2}
-                onChange={(e) => setRepresentativePosition2(e.target.value)}
-              />
-            </Field>
-          </div>
-        )}
-
-        <Field label="Email">
-          <input
-            className="input"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Signing place">
-            <input
-              className="input"
-              value={signingPlace}
-              onChange={(e) => setSigningPlace(e.target.value)}
-            />
-          </Field>
-          <Field label="Signing date">
-            <input
-              className="input"
-              type="date"
-              value={signingDate}
-              onChange={(e) => setSigningDate(e.target.value)}
-            />
-          </Field>
-        </div>
-
-        {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-          >
-            {saving ? "Adding…" : "Add LP"}
-          </button>
         </div>
       </form>
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </span>
-      {children}
-    </label>
   );
 }
