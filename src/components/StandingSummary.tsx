@@ -63,16 +63,16 @@ export function StandingTile({
       {showMoney && s.pct !== null && (
         <div>
           <div className="flex items-baseline justify-between text-sm">
-            <span className="font-medium text-white">
+            <span className="font-medium text-slate-900">
               {formatAmount(s.raised, caseData.currency)}
             </span>
-            <span className="text-xs text-white/55">
+            <span className="text-xs text-slate-500">
               of {formatAmount(s.target, caseData.currency)}
             </span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-900/10">
             <div
-              className="h-full rounded-full bg-white"
+              className="h-full rounded-full bg-slate-900"
               style={{ width: `${s.pct}%` }}
             />
           </div>
@@ -84,7 +84,7 @@ export function StandingTile({
         <Mini label="NDAs signed" value={s.loading ? "…" : String(signed)} />
       </div>
       {showMoney && caseData.deadline && (
-        <p className="text-center text-xs text-white/55">
+        <p className="text-center text-xs text-slate-500">
           Deadline {formatDate(caseData.deadline)} · {deadlineText(s.dleft)}
         </p>
       )}
@@ -94,9 +94,9 @@ export function StandingTile({
 
 function Mini({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/10 px-2 py-3">
-      <div className="text-lg font-semibold text-white">{value}</div>
-      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-white/50">
+    <div className="rounded-2xl bg-white/60 px-2 py-3">
+      <div className="text-lg font-semibold text-slate-900">{value}</div>
+      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-500">
         {label}
       </div>
     </div>

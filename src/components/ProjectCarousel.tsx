@@ -119,7 +119,7 @@ export default function ProjectCarousel({
         aria-label="Previous"
         onClick={() => scrollTo(active - 1)}
         disabled={atStart}
-        className="glass absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white transition hover:bg-white/25 disabled:opacity-0 md:flex"
+        className="glass absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-slate-700 transition hover:bg-white/80 disabled:opacity-0 md:flex"
       >
         ‹
       </button>
@@ -128,7 +128,7 @@ export default function ProjectCarousel({
         aria-label="Next"
         onClick={() => scrollTo(active + 1)}
         disabled={atEnd}
-        className="glass absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white transition hover:bg-white/25 disabled:opacity-0 md:flex"
+        className="glass absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-slate-700 transition hover:bg-white/80 disabled:opacity-0 md:flex"
       >
         ›
       </button>
@@ -143,7 +143,7 @@ export default function ProjectCarousel({
             }
             onClick={() => scrollTo(i)}
             className={`h-1.5 rounded-full transition-all ${
-              i === active ? "w-6 bg-white" : "w-1.5 bg-white/35"
+              i === active ? "w-6 bg-slate-800" : "w-1.5 bg-slate-400/60"
             }`}
           />
         ))}

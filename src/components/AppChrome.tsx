@@ -27,18 +27,18 @@ export default function AppChrome({
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       {immersive ? (
-        <div className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-4 rounded-full glass px-4 py-2 text-xs text-white">
+        <div className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-4 rounded-full glass px-4 py-2 text-xs text-slate-800 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.35)]">
           {isDeal && (
-            <Link href="/" className="font-medium hover:text-white/80">
+            <Link href="/" className="font-medium hover:text-slate-500">
               ← All deals
             </Link>
           )}
           {role === "admin" && (
-            <Link href="/users" className="font-medium hover:text-white/80">
+            <Link href="/users" className="font-medium hover:text-slate-500">
               Manage users
             </Link>
           )}
-          <LogoutButton className="text-xs text-white/70 hover:text-white" />
+          <LogoutButton className="text-xs text-slate-500 hover:text-slate-900" />
         </div>
       ) : (
         <header className="relative z-10 border-b border-slate-200/60 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl">

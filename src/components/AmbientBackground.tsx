@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import type { CSSProperties } from "react";
 
 const DEFAULT_COLORS = ["#4f46e5", "#0ea5e9"];
-const BASE = "#020617";
+const BASE = "#e9ecf0";
 
 function normalize(hex: string | undefined, fallback: string) {
   return hex && /^#?[0-9a-f]{3,8}$/i.test(hex.trim())

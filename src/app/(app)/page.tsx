@@ -43,11 +43,11 @@ export default function HomePage() {
       {error ? (
         <Notice tone="error">Could not load cases: {error}</Notice>
       ) : !cases ? (
-        <p className="py-24 text-center text-sm text-white/60">Loading…</p>
+        <p className="py-24 text-center text-sm text-slate-500">Loading…</p>
       ) : cases.length === 0 && role !== "admin" ? (
         <Notice>
-          <h2 className="text-lg font-semibold text-white">No deals yet</h2>
-          <p className="mt-1 text-sm text-white/60">
+          <h2 className="text-lg font-semibold text-slate-900">No deals yet</h2>
+          <p className="mt-1 text-sm text-slate-500">
             Nothing to show here for now.
           </p>
         </Notice>
@@ -60,7 +60,7 @@ export default function HomePage() {
             onActiveChange={setActive}
           />
           {current && (
-            <p className="mt-5 text-center text-sm text-white/55">
+            <p className="mt-5 text-center text-sm text-slate-500">
               {[current.sector, current.sponsor && `Sponsor: ${current.sponsor}`]
                 .filter(Boolean)
                 .join(" · ") || " "}
@@ -83,8 +83,8 @@ function Notice({
     <div
       className={`mx-auto mt-16 max-w-md rounded-[2rem] border p-10 text-center backdrop-blur-2xl ${
         tone === "error"
-          ? "border-red-300/30 bg-red-500/10 text-sm text-red-100"
-          : "border-white/20 bg-white/10"
+          ? "border-transparent bg-red-500/10 text-sm text-red-700"
+          : "border-transparent bg-white/50"
       }`}
     >
       {children}

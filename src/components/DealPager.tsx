@@ -121,7 +121,7 @@ export default function DealPager({
     .join(" · ");
 
   return (
-    <div className="text-white">
+    <div className="text-slate-900">
       {/* Page switcher */}
       <div className="mb-5 flex justify-center">
         <div className="glass flex rounded-full p-1 text-sm">
@@ -131,7 +131,7 @@ export default function DealPager({
               type="button"
               onClick={() => goTo(i)}
               className={`rounded-full px-5 py-1.5 font-medium transition-colors ${
-                page === i ? "bg-white text-slate-900" : "text-white/75"
+                page === i ? "bg-slate-900 text-white" : "text-slate-600"
               }`}
             >
               {label}
@@ -150,7 +150,7 @@ export default function DealPager({
           <div className="mx-auto max-w-md space-y-4">
             <div className="flex flex-col items-center text-center">
               <div
-                className="relative h-28 w-28 overflow-hidden rounded-[1.75rem] bg-white/10 shadow-xl ring-1 ring-white/25"
+                className="relative h-28 w-28 overflow-hidden rounded-[1.75rem] bg-white/60 shadow-xl"
                 style={!caseData.logo_url && tint ? { backgroundColor: `#${tint.replace("#", "")}` } : undefined}
               >
                 {caseData.logo_url ? (
@@ -169,7 +169,7 @@ export default function DealPager({
               <h1 className="mt-4 text-3xl font-semibold tracking-tight">
                 {caseData.name}
               </h1>
-              {subline && <p className="mt-1 text-sm text-white/60">{subline}</p>}
+              {subline && <p className="mt-1 text-sm text-slate-500">{subline}</p>}
               <div className="mt-3">
                 <StageBadge stage={caseData.stage} />
               </div>
@@ -200,7 +200,7 @@ export default function DealPager({
               subtitle="Drop files or a note for review"
             />
 
-            <p className="pt-2 text-center text-xs text-white/40">
+            <p className="pt-2 text-center text-xs text-slate-400">
               Swipe left for details →
             </p>
           </div>
@@ -212,7 +212,7 @@ export default function DealPager({
             <h2 className="text-center text-2xl font-semibold tracking-tight">
               Information
             </h2>
-            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900">
+            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
               {editing && isAdmin ? (
                 <CaseEditForm
                   caseData={caseData}
@@ -235,14 +235,14 @@ export default function DealPager({
             <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
               Investors
             </h2>
-            <div className="overflow-x-auto rounded-[1.75rem] bg-white p-5 text-slate-900">
+            <div className="overflow-x-auto rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
               <CaseTrack caseData={caseData} role={role} />
             </div>
 
             <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
               Open questions
             </h2>
-            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900">
+            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
               <OpenQuestions caseId={caseData.id} isAdmin={isAdmin} />
             </div>
 
@@ -251,7 +251,7 @@ export default function DealPager({
                 <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
                   To review
                 </h2>
-                <div className="rounded-[1.75rem] bg-white p-5 text-slate-900">
+                <div className="rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
                   <InboxReview caseData={caseData} refreshKey={inboxKey} />
                 </div>
               </>
@@ -316,16 +316,16 @@ function Tile({
     <button
       type="button"
       onClick={onClick}
-      className="glass block w-full rounded-[1.75rem] p-5 text-left shadow-[0_20px_50px_-20px_rgba(0,0,0,0.5)] transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      className="glass block w-full rounded-[1.75rem] p-5 text-left shadow-[0_20px_50px_-25px_rgba(15,23,42,0.35)] transition-colors hover:bg-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-lg font-semibold tracking-tight">{title}</div>
           {subtitle && (
-            <div className="mt-0.5 truncate text-sm text-white/60">{subtitle}</div>
+            <div className="mt-0.5 truncate text-sm text-slate-500">{subtitle}</div>
           )}
         </div>
-        <span aria-hidden className="text-xl text-white/50">
+        <span aria-hidden className="text-xl text-slate-400">
           ›
         </span>
       </div>

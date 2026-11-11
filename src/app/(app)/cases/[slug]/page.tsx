@@ -94,11 +94,11 @@ export default function CaseDetailPage() {
 
   let content: React.ReactNode;
   if (loading || role === undefined) {
-    content = <p className="py-24 text-center text-sm text-white/60">Loading…</p>;
+    content = <p className="py-24 text-center text-sm text-slate-500">Loading…</p>;
   } else if (notFound || !caseData) {
     content = (
-      <div className="glass mx-auto mt-16 max-w-md rounded-[2rem] p-10 text-center text-white">
-        <p className="text-white/80">Deal not found.</p>
+      <div className="glass mx-auto mt-16 max-w-md rounded-[2rem] p-10 text-center text-slate-900">
+        <p className="text-slate-600">Deal not found.</p>
         <Link href="/" className="mt-3 inline-block text-sm underline">
           Back to deals
         </Link>
