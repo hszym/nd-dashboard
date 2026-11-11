@@ -11,7 +11,7 @@ import {
   CASE_FILE_MAX_BYTES,
   attachmentStoragePath,
 } from "@/lib/supabase";
-import IntroEmailPanel from "@/components/IntroEmailPanel";
+import IntroEmailCard from "@/components/IntroEmailPanel";
 
 const SVG_PROPS = {
   viewBox: "0 0 24 24",
@@ -30,15 +30,6 @@ function FileIcon({ ready }: { ready: boolean }) {
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
       <path d="M14 3v5h5" />
       {ready ? <path d="m9 14 2 2 4-4" /> : <path d="M9 13h6M9 17h4" />}
-    </svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg {...SVG_PROPS}>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="m3 7 9 6 9-6" />
     </svg>
   );
 }
@@ -109,23 +100,33 @@ export default function DocumentList({
 
       <ul className="space-y-2">
         {shown.map((doc) => {
-          const isIntro = doc.type === "Intro Email";
+          // The intro email has nothing to store: its card opens the email directly.
+          if (doc.type === "Intro Email") {
+            return (
+              <li key={doc.type}>
+                <IntroEmailCard
+                  caseName={caseName}
+                  sources={attachments.map((a) => ({
+                    label: a.type,
+                    url: a.attachment_url!,
+                  }))}
+                />
+              </li>
+            );
+          }
+
           const canAttach = EMAIL_ATTACHMENT_TYPES.includes(doc.type);
           const hasLink = Boolean(doc.file_url);
           const available = isReady(doc);
-          const expanded = openType === doc.type && (isIntro || editable);
+          const expanded = openType === doc.type && editable;
 
           const toggle = () => setOpenType(expanded ? null : doc.type);
 
-          const subtitle = isIntro
-            ? attachments.length > 0
-              ? `Email with the ${attachments.map((a) => a.type.toLowerCase()).join(" and the ")} attached`
-              : "Upload the 2-pager or Deck PDF to enable it"
-            : !hasLink && editable
-              ? "No link yet"
-              : canAttach && doc.attachment_url
-                ? "PDF ready for the intro email"
-                : null;
+          const subtitle = !hasLink && editable
+            ? "No link yet"
+            : canAttach && doc.attachment_url
+              ? "PDF ready for the intro email"
+              : null;
 
           const body = (
             <>
@@ -136,7 +137,7 @@ export default function DocumentList({
                     : "bg-slate-100 text-slate-400"
                 }`}
               >
-                {isIntro ? <MailIcon /> : <FileIcon ready={available} />}
+                <FileIcon ready={available} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-slate-900">
@@ -148,18 +149,10 @@ export default function DocumentList({
                   </span>
                 )}
               </span>
-              {isIntro ? (
-                available && (
-                  <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
-                    {expanded ? "Close" : "Prepare ›"}
-                  </span>
-                )
-              ) : (
-                hasLink && (
-                  <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
-                    Open ↗
-                  </span>
-                )
+              {hasLink && (
+                <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
+                  Open ↗
+                </span>
               )}
             </>
           );
@@ -175,7 +168,7 @@ export default function DocumentList({
               }`}
             >
               <div className="flex items-center">
-                {!isIntro && hasLink ? (
+                {hasLink ? (
                   <a
                     href={doc.file_url!}
                     target="_blank"
@@ -188,13 +181,12 @@ export default function DocumentList({
                   <button
                     type="button"
                     onClick={toggle}
-                    disabled={isIntro && !available}
-                    className={`${rowClass} hover:bg-slate-50 disabled:cursor-default disabled:hover:bg-transparent`}
+                    className={`${rowClass} hover:bg-slate-50`}
                   >
                     {body}
                   </button>
                 )}
-                {editable && !isIntro && (
+                {editable && (
                   <button
                     type="button"
                     onClick={toggle}
@@ -223,39 +215,27 @@ export default function DocumentList({
 
               {expanded && (
                 <div className="space-y-4 border-t border-slate-100 p-3">
-                  {isIntro ? (
-                    <IntroEmailPanel
-                      caseName={caseName}
-                      sources={attachments.map((a) => ({
-                        label: a.type,
-                        url: a.attachment_url!,
-                      }))}
+                  <div>
+                    <div className="mb-1 text-xs font-medium text-slate-500">
+                      Link (OneDrive)
+                    </div>
+                    <EditableUrl
+                      value={doc.file_url}
+                      onSave={(url) => onUpdate(doc, { file_url: url })}
                     />
-                  ) : (
-                    <>
-                      <div>
-                        <div className="mb-1 text-xs font-medium text-slate-500">
-                          Link (OneDrive)
-                        </div>
-                        <EditableUrl
-                          value={doc.file_url}
-                          onSave={(url) => onUpdate(doc, { file_url: url })}
-                        />
+                  </div>
+                  {canAttach && (
+                    <div>
+                      <div className="mb-1 text-xs font-medium text-slate-500">
+                        PDF for the intro email
                       </div>
-                      {canAttach && (
-                        <div>
-                          <div className="mb-1 text-xs font-medium text-slate-500">
-                            PDF for the intro email
-                          </div>
-                          <PdfAttachmentUpload
-                            caseId={caseId}
-                            docType={doc.type}
-                            value={doc.attachment_url}
-                            onSave={(url) => onUpdate(doc, { attachment_url: url })}
-                          />
-                        </div>
-                      )}
-                    </>
+                      <PdfAttachmentUpload
+                        caseId={caseId}
+                        docType={doc.type}
+                        value={doc.attachment_url}
+                        onSave={(url) => onUpdate(doc, { attachment_url: url })}
+                      />
+                    </div>
                   )}
                 </div>
               )}
