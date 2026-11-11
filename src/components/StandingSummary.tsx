@@ -6,11 +6,12 @@ import {
   Nda,
   DOCUMENT_TYPES,
   LP_STATUSES,
+  isDocumentReady,
 } from "@/lib/supabase";
 import { formatAmount, formatDate, daysUntil } from "@/lib/utils";
 
 function compute(caseData: Case, documents: CaseDocument[], lps: Nda[] | null) {
-  const done = documents.filter((d) => d.status === "Done").length;
+  const done = documents.filter(isDocumentReady).length;
   const target = caseData.amount_target;
   const remaining = caseData.amount_remaining;
   const raised =

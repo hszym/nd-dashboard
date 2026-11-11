@@ -7,6 +7,7 @@ import {
   CaseDocument,
   DOCUMENT_TYPES,
   Nda,
+  isDocumentReady,
 } from "@/lib/supabase";
 import StageBadge from "@/components/StageBadge";
 import CaseLogo from "@/components/CaseLogo";
@@ -43,7 +44,7 @@ export default function DealPager({
   role: "admin" | "team";
   onUpdateDocument: (
     doc: CaseDocument,
-    patch: Partial<Pick<CaseDocument, "status" | "file_url">>
+    patch: Partial<Pick<CaseDocument, "file_url">>
   ) => void;
   onReload: () => void;
   onDeleted: () => void;
@@ -113,7 +114,7 @@ export default function DealPager({
     setSheet(key);
   }
 
-  const done = documents.filter((d) => d.status === "Done").length;
+  const done = documents.filter(isDocumentReady).length;
   const subline = [
     caseData.sector,
     caseData.sponsor && `Sponsor: ${caseData.sponsor}`,

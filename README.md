@@ -1,9 +1,9 @@
 # ND Group — Case Dashboard
 
 Personal tracking dashboard: one row per case (name, sector, stage, amounts,
-deadline), and a 7-item document checklist per case (Case Review, 2-pager,
-Executive Summary, Deck, Term Sheet, Intro Email, Follow-up Email) with a
-status (Manquant / En cours / Fait) and an optional link to the file.
+deadline), and a 6-item document list per case (Case Review, 2-pager,
+Executive Summary, Deck, Term Sheet, Intro Email). A document counts as
+available once it has a link to its file (OneDrive).
 
 Stack: Next.js (App Router) + Tailwind CSS, backed by Supabase (Postgres).
 

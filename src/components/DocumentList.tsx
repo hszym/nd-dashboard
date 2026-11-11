@@ -4,27 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   supabase,
   CaseDocument,
-  DocumentStatus,
+  isDocumentReady,
   isEmailDocumentType,
   EMAIL_FILES_BUCKET,
   emailStoragePath,
 } from "@/lib/supabase";
 
-const STATUSES: DocumentStatus[] = ["Missing", "In Progress", "Done"];
-
-const TILE: Record<DocumentStatus, string> = {
-  Missing: "bg-slate-100 text-slate-400",
-  "In Progress": "bg-amber-50 text-amber-600",
-  Done: "bg-emerald-50 text-emerald-600",
-};
-
-const PILL: Record<DocumentStatus, string> = {
-  Missing: "bg-slate-100 text-slate-500",
-  "In Progress": "bg-amber-50 text-amber-700",
-  Done: "bg-emerald-50 text-emerald-700",
-};
-
-function FileIcon({ done }: { done: boolean }) {
+function FileIcon({ ready }: { ready: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -38,15 +24,15 @@ function FileIcon({ done }: { done: boolean }) {
     >
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
       <path d="M14 3v5h5" />
-      {done ? <path d="m9 14 2 2 4-4" /> : <path d="M9 13h6M9 17h4" />}
+      {ready ? <path d="m9 14 2 2 4-4" /> : <path d="M9 13h6M9 17h4" />}
     </svg>
   );
 }
 
 /**
  * The deal's documents as cards. A card with a link opens the file straight
- * away in a new tab. Admins also get a pencil to change the status or the
- * link; team members only see documents that are Done and have a link.
+ * away in a new tab. Admins also get a pencil to change the link; team
+ * members only see documents that have one.
  */
 export default function DocumentList({
   caseId,
@@ -62,15 +48,15 @@ export default function DocumentList({
   folderUrl?: string | null;
   onUpdate: (
     doc: CaseDocument,
-    patch: Partial<Pick<CaseDocument, "status" | "file_url">>
+    patch: Partial<Pick<CaseDocument, "file_url">>
   ) => void;
 }) {
   const [openType, setOpenType] = useState<string | null>(null);
 
   const shown = editable
     ? documents
-    : documents.filter((d) => d.status === "Done" && d.file_url);
-  const ready = documents.filter((d) => d.status === "Done" && d.file_url).length;
+    : documents.filter(isDocumentReady);
+  const ready = documents.filter(isDocumentReady).length;
 
   if (!editable && shown.length === 0) {
     return <p className="text-sm text-slate-500">No documents available yet.</p>;
@@ -113,22 +99,21 @@ export default function DocumentList({
           const body = (
             <>
               <span
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${TILE[doc.status]}`}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                  hasLink ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
+                }`}
               >
-                <FileIcon done={doc.status === "Done"} />
+                <FileIcon ready={hasLink} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-slate-900">
                   {doc.type}
                 </span>
-                <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
-                  <span
-                    className={`rounded-full px-2 py-0.5 font-medium ${PILL[doc.status]}`}
-                  >
-                    {doc.status}
+                {!hasLink && (
+                  <span className="mt-0.5 block text-xs text-slate-400">
+                    {editable ? "No link yet" : ""}
                   </span>
-                  {!hasLink && editable && <span>No link yet</span>}
-                </span>
+                )}
               </span>
               {hasLink && (
                 <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
@@ -196,44 +181,17 @@ export default function DocumentList({
 
               {expanded && (
                 <div className="space-y-3 border-t border-slate-100 p-3">
-                  <div className="inline-flex rounded-full bg-slate-100 p-1 text-xs">
-                    {STATUSES.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => onUpdate(doc, { status: s })}
-                        className={`rounded-full px-3 py-1 font-medium transition-colors ${
-                          doc.status === s
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
                   {isEmail ? (
                     <EmailFileUpload
                       caseId={caseId}
                       docType={doc.type}
                       value={doc.file_url}
-                      onSave={(url) =>
-                        onUpdate(doc, {
-                          file_url: url,
-                          status: url ? "Done" : "Missing",
-                        })
-                      }
+                      onSave={(url) => onUpdate(doc, { file_url: url })}
                     />
                   ) : (
                     <EditableUrl
                       value={doc.file_url}
-                      onSave={(url) =>
-                        onUpdate(doc, {
-                          file_url: url,
-                          // A fresh link on a missing document means it now exists.
-                          ...(url && doc.status === "Missing" ? { status: "Done" } : {}),
-                        })
-                      }
+                      onSave={(url) => onUpdate(doc, { file_url: url })}
                     />
                   )}
                 </div>

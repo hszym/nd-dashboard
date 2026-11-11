@@ -20,8 +20,7 @@ export type DocumentType =
   | "Executive Summary"
   | "Deck"
   | "Term Sheet"
-  | "Intro Email"
-  | "Follow-up Email";
+  | "Intro Email";
 
 export type DocumentStatus = "Missing" | "In Progress" | "Done";
 
@@ -32,7 +31,6 @@ export const DOCUMENT_TYPES: DocumentType[] = [
   "Deck",
   "Term Sheet",
   "Intro Email",
-  "Follow-up Email",
 ];
 
 export interface BrandColor {
@@ -77,10 +75,15 @@ export interface CaseDocument {
   updated_at: string;
 }
 
-export const EMAIL_DOCUMENT_TYPES: DocumentType[] = [
-  "Intro Email",
-  "Follow-up Email",
-];
+/**
+ * A document counts as available as soon as it has a link or file. (The old
+ * status column is kept in the database but no longer shown or used.)
+ */
+export function isDocumentReady(doc: Pick<CaseDocument, "file_url">): boolean {
+  return Boolean(doc.file_url);
+}
+
+export const EMAIL_DOCUMENT_TYPES: DocumentType[] = ["Intro Email"];
 
 export function isEmailDocumentType(type: DocumentType): boolean {
   return EMAIL_DOCUMENT_TYPES.includes(type);

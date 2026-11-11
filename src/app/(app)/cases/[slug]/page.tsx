@@ -62,12 +62,20 @@ export default function CaseDetailPage() {
 
   async function updateDocument(
     doc: CaseDocument,
-    patch: Partial<Pick<CaseDocument, "status" | "file_url">>
+    patch: Partial<Pick<CaseDocument, "file_url">>
   ) {
     if (!caseData) return;
+    // The old status column is no longer shown, but keep it consistent with
+    // the link in case anything else reads it.
+    const full = {
+      ...patch,
+      status: (("file_url" in patch ? patch.file_url : doc.file_url)
+        ? "Done"
+        : "Missing") as DocumentStatus,
+    };
     // optimistic update
     setDocuments((prev) =>
-      prev.map((d) => (d.type === doc.type ? { ...d, ...patch } : d))
+      prev.map((d) => (d.type === doc.type ? { ...d, ...full } : d))
     );
     if (doc.id.startsWith("missing-")) {
       const { data, error } = await supabase
@@ -75,7 +83,7 @@ export default function CaseDetailPage() {
         .insert({
           case_id: caseData.id,
           type: doc.type,
-          status: patch.status ?? "Missing",
+          status: full.status,
           file_url: patch.file_url ?? null,
         })
         .select()
@@ -86,7 +94,7 @@ export default function CaseDetailPage() {
         );
       }
     } else {
-      await supabase.from("documents").update(patch).eq("id", doc.id);
+      await supabase.from("documents").update(full).eq("id", doc.id);
     }
   }
 
