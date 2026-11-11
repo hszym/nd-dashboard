@@ -15,12 +15,14 @@ import CaseEditForm from "@/components/CaseEditForm";
 import { StandingTile, StandingDetail } from "@/components/StandingSummary";
 import SendNdaPanel from "@/components/SendNdaPanel";
 import OpenQuestions from "@/components/OpenQuestions";
+import AddInfoPanel from "@/components/AddInfoPanel";
+import InboxReview from "@/components/InboxReview";
 import CaseTrack from "@/components/CaseTrack";
 import { formatAmount, formatDate } from "@/lib/utils";
 
-type SheetKey = "standing" | "documents" | "nda" | "info" | null;
+type SheetKey = "standing" | "documents" | "nda" | "add" | null;
 
-const PAGES = ["Overview", "Investors"] as const;
+const PAGES = ["Overview", "Details"] as const;
 
 /**
  * Deal page: two swipeable pages (Overview, Investors) in the same dark glass
@@ -51,6 +53,7 @@ export default function DealPager({
   const [page, setPage] = useState(0);
   const [sheet, setSheet] = useState<SheetKey>(null);
   const [editing, setEditing] = useState(false);
+  const [inboxKey, setInboxKey] = useState(0);
   const [lps, setLps] = useState<Nda[] | null>(null);
 
   const loadLps = useCallback(async () => {
@@ -192,25 +195,44 @@ export default function DealPager({
               subtitle="Pick an LP, then draft the email"
             />
             <Tile
-              onClick={() => open("info")}
-              title="Information"
-              subtitle={
-                [caseData.sponsor && `Sponsor: ${caseData.sponsor}`, caseData.sector]
-                  .filter(Boolean)
-                  .join(" · ") || (isAdmin ? "Add sponsor, links and notes" : "")
-              }
+              onClick={() => open("add")}
+              title="+ Add documents / information"
+              subtitle="Drop files or a note for review"
             />
 
             <p className="pt-2 text-center text-xs text-white/40">
-              Swipe left for investors →
+              Swipe left for details →
             </p>
           </div>
         </section>
 
-        {/* Page 2: Investors */}
+        {/* Page 2: Details */}
         <section className="w-full shrink-0 snap-center px-5">
           <div className="mx-auto max-w-3xl space-y-4">
             <h2 className="text-center text-2xl font-semibold tracking-tight">
+              Information
+            </h2>
+            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900">
+              {editing && isAdmin ? (
+                <CaseEditForm
+                  caseData={caseData}
+                  onSaved={() => {
+                    setEditing(false);
+                    onReload();
+                  }}
+                  onCancel={() => setEditing(false)}
+                  onDeleted={onDeleted}
+                />
+              ) : (
+                <InfoView
+                  caseData={caseData}
+                  isAdmin={isAdmin}
+                  onEdit={() => setEditing(true)}
+                />
+              )}
+            </div>
+
+            <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
               Investors
             </h2>
             <div className="overflow-x-auto rounded-[1.75rem] bg-white p-5 text-slate-900">
@@ -223,6 +245,17 @@ export default function DealPager({
             <div className="rounded-[1.75rem] bg-white p-5 text-slate-900">
               <OpenQuestions caseId={caseData.id} isAdmin={isAdmin} />
             </div>
+
+            {isAdmin && (
+              <>
+                <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
+                  To review
+                </h2>
+                <div className="rounded-[1.75rem] bg-white p-5 text-slate-900">
+                  <InboxReview caseData={caseData} refreshKey={inboxKey} />
+                </div>
+              </>
+            )}
           </div>
         </section>
       </div>
@@ -254,27 +287,15 @@ export default function DealPager({
       </Sheet>
 
       <Sheet
-        open={sheet === "info"}
+        open={sheet === "add"}
         onClose={() => setSheet(null)}
-        title={editing ? "Edit deal" : "Information"}
+        title="Add documents / information"
       >
-        {editing && isAdmin ? (
-          <CaseEditForm
-            caseData={caseData}
-            onSaved={() => {
-              setEditing(false);
-              onReload();
-            }}
-            onCancel={() => setEditing(false)}
-            onDeleted={onDeleted}
-          />
-        ) : (
-          <InfoView
-            caseData={caseData}
-            isAdmin={isAdmin}
-            onEdit={() => setEditing(true)}
-          />
-        )}
+        <AddInfoPanel
+          caseData={caseData}
+          onSubmitted={() => setInboxKey((k) => k + 1)}
+          onClose={() => setSheet(null)}
+        />
       </Sheet>
     </div>
   );

@@ -175,6 +175,41 @@ export interface CaseQuestion {
   answered_at: string | null;
 }
 
+export type InboxStatus = "to_review" | "reviewed";
+
+export interface InboxFile {
+  name: string;
+  path: string;
+  size: number;
+  type: string;
+}
+
+/** Documents/notes dropped on a deal, waiting for an admin review (`case_inbox_items`). */
+export interface CaseInboxItem {
+  id: string;
+  case_id: string;
+  note: string | null;
+  files: InboxFile[];
+  status: InboxStatus;
+  created_by: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+/** Private bucket; one folder per deal (by slug), then one folder per submission. */
+export const CASE_INBOX_BUCKET = "case-inbox";
+export const CASE_INBOX_MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+export function inboxStoragePath(
+  caseSlug: string,
+  itemId: string,
+  index: number,
+  filename: string
+): string {
+  const safe = filename.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "file";
+  return `${caseSlug}/${itemId}/${index}-${safe}`;
+}
+
 export const NDA_SIGNED_FILES_BUCKET = "nda-files";
 
 /** Storage path for the uploaded signed NDA file for a given NDA row. */
