@@ -9,92 +9,240 @@ import {
   EMAIL_FILES_BUCKET,
   emailStoragePath,
 } from "@/lib/supabase";
-import DocStatusBadge from "@/components/DocStatusBadge";
+
+const STATUSES: DocumentStatus[] = ["Missing", "In Progress", "Done"];
+
+const TILE: Record<DocumentStatus, string> = {
+  Missing: "bg-slate-100 text-slate-400",
+  "In Progress": "bg-amber-50 text-amber-600",
+  Done: "bg-emerald-50 text-emerald-600",
+};
+
+const PILL: Record<DocumentStatus, string> = {
+  Missing: "bg-slate-100 text-slate-500",
+  "In Progress": "bg-amber-50 text-amber-700",
+  Done: "bg-emerald-50 text-emerald-700",
+};
+
+function FileIcon({ done }: { done: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5" />
+      {done ? <path d="m9 14 2 2 4-4" /> : <path d="M9 13h6M9 17h4" />}
+    </svg>
+  );
+}
 
 /**
- * The 7 deal documents. Admins edit status/links/email files in place; team
- * members only see documents that are Done and have a file/link.
+ * The deal's documents as cards. A card with a link opens the file straight
+ * away in a new tab. Admins also get a pencil to change the status or the
+ * link; team members only see documents that are Done and have a link.
  */
 export default function DocumentList({
   caseId,
   documents,
   editable,
+  folderUrl,
   onUpdate,
 }: {
   caseId: string;
   documents: CaseDocument[];
   editable: boolean;
+  /** The deal's OneDrive folder, offered as a shortcut for admins. */
+  folderUrl?: string | null;
   onUpdate: (
     doc: CaseDocument,
     patch: Partial<Pick<CaseDocument, "status" | "file_url">>
   ) => void;
 }) {
-  if (!editable) {
-    const available = documents.filter((d) => d.status === "Done" && d.file_url);
-    if (available.length === 0) {
-      return <p className="text-sm text-slate-500">No documents available yet.</p>;
-    }
-    return (
-      <ul className="divide-y divide-slate-100">
-        {available.map((doc) => (
-          <li key={doc.type} className="flex items-center justify-between py-3">
-            <span className="text-sm font-medium text-slate-800">{doc.type}</span>
-            <a
-              href={doc.file_url!}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-blue-600 underline"
-            >
-              {isEmailDocumentType(doc.type) ? "Download ↓" : "Open ↗"}
-            </a>
-          </li>
-        ))}
-      </ul>
-    );
+  const [openType, setOpenType] = useState<string | null>(null);
+
+  const shown = editable
+    ? documents
+    : documents.filter((d) => d.status === "Done" && d.file_url);
+  const ready = documents.filter((d) => d.status === "Done" && d.file_url).length;
+
+  if (!editable && shown.length === 0) {
+    return <p className="text-sm text-slate-500">No documents available yet.</p>;
   }
 
   return (
-    <ul className="divide-y divide-slate-100">
-      {documents.map((doc) => (
-        <li key={doc.type} className="space-y-2 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-slate-800">{doc.type}</span>
-            <div className="flex items-center gap-2">
-              <DocStatusBadge status={doc.status} />
-              <select
-                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
-                value={doc.status}
-                onChange={(e) =>
-                  onUpdate(doc, { status: e.target.value as DocumentStatus })
-                }
-              >
-                <option>Missing</option>
-                <option>In Progress</option>
-                <option>Done</option>
-              </select>
-            </div>
-          </div>
-          {isEmailDocumentType(doc.type) ? (
-            <EmailFileUpload
-              caseId={caseId}
-              docType={doc.type}
-              value={doc.file_url}
-              onSave={(url) =>
-                onUpdate(doc, {
-                  file_url: url,
-                  status: url ? "Done" : "Missing",
-                })
-              }
-            />
-          ) : (
-            <EditableUrl
-              value={doc.file_url}
-              onSave={(url) => onUpdate(doc, { file_url: url })}
-            />
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium text-slate-900">
+            {ready} of {documents.length} ready
+          </span>
+          {editable && folderUrl && (
+            <a
+              href={folderUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-blue-600 hover:underline"
+            >
+              Open OneDrive folder ↗
+            </a>
           )}
-        </li>
-      ))}
-    </ul>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all"
+            style={{
+              width: `${documents.length ? (ready / documents.length) * 100 : 0}%`,
+            }}
+          />
+        </div>
+      </div>
+
+      <ul className="space-y-2">
+        {shown.map((doc) => {
+          const isEmail = isEmailDocumentType(doc.type);
+          const hasLink = Boolean(doc.file_url);
+          const expanded = editable && openType === doc.type;
+
+          const body = (
+            <>
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${TILE[doc.status]}`}
+              >
+                <FileIcon done={doc.status === "Done"} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-slate-900">
+                  {doc.type}
+                </span>
+                <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                  <span
+                    className={`rounded-full px-2 py-0.5 font-medium ${PILL[doc.status]}`}
+                  >
+                    {doc.status}
+                  </span>
+                  {!hasLink && editable && <span>No link yet</span>}
+                </span>
+              </span>
+              {hasLink && (
+                <span className="shrink-0 text-xs font-medium text-slate-500 group-hover:text-slate-900">
+                  {isEmail ? "Download ↓" : "Open ↗"}
+                </span>
+              )}
+            </>
+          );
+
+          const rowClass =
+            "group flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-3 text-left";
+
+          return (
+            <li
+              key={doc.type}
+              className={`rounded-2xl border bg-white transition-shadow ${
+                expanded ? "border-slate-300 shadow-sm" : "border-slate-200 hover:shadow-sm"
+              }`}
+            >
+              <div className="flex items-center">
+                {hasLink ? (
+                  <a
+                    href={doc.file_url!}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${rowClass} hover:bg-slate-50`}
+                  >
+                    {body}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setOpenType(expanded ? null : doc.type)}
+                    className={`${rowClass} hover:bg-slate-50`}
+                  >
+                    {body}
+                  </button>
+                )}
+                {editable && (
+                  <button
+                    type="button"
+                    onClick={() => setOpenType(expanded ? null : doc.type)}
+                    aria-label={`Edit ${doc.type}`}
+                    aria-expanded={expanded}
+                    className={`mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-900 ${
+                      expanded ? "bg-slate-100 text-slate-900" : ""
+                    }`}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {expanded && (
+                <div className="space-y-3 border-t border-slate-100 p-3">
+                  <div className="inline-flex rounded-full bg-slate-100 p-1 text-xs">
+                    {STATUSES.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => onUpdate(doc, { status: s })}
+                        className={`rounded-full px-3 py-1 font-medium transition-colors ${
+                          doc.status === s
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  {isEmail ? (
+                    <EmailFileUpload
+                      caseId={caseId}
+                      docType={doc.type}
+                      value={doc.file_url}
+                      onSave={(url) =>
+                        onUpdate(doc, {
+                          file_url: url,
+                          status: url ? "Done" : "Missing",
+                        })
+                      }
+                    />
+                  ) : (
+                    <EditableUrl
+                      value={doc.file_url}
+                      onSave={(url) =>
+                        onUpdate(doc, {
+                          file_url: url,
+                          // A fresh link on a missing document means it now exists.
+                          ...(url && doc.status === "Missing" ? { status: "Done" } : {}),
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -119,7 +267,7 @@ function EditableUrl({
         <input
           autoFocus
           className="input py-1 text-xs"
-          placeholder="https://drive.google.com/…"
+          placeholder="Paste the OneDrive link…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {

@@ -281,6 +281,7 @@ export default function DealPager({
           caseId={caseData.id}
           documents={documents}
           editable={isAdmin}
+          folderUrl={caseData.onedrive_url}
           onUpdate={onUpdateDocument}
         />
       </Sheet>
