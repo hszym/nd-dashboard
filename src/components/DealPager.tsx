@@ -191,7 +191,7 @@ export default function DealPager({
             <Tile
               onClick={() => open("nda")}
               title="Send NDA"
-              subtitle="Pick an LP, then draft the email"
+              subtitle="Create an LP or pick an existing one"
             />
             <DropTile onClick={() => open("add")} label="Drop files or a note for review" />
 

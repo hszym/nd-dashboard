@@ -16,8 +16,51 @@ type PdfState =
   | { id: string; status: "ready"; file: File }
   | { id: string; status: "error"; message: string };
 
+function ChoiceCard({
+  href,
+  onClick,
+  icon,
+  title,
+  description,
+}: {
+  href?: string;
+  onClick?: () => void;
+  icon: string;
+  title: string;
+  description: string;
+}) {
+  const className =
+    "flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300 hover:shadow-md";
+  const inner = (
+    <>
+      <span
+        aria-hidden
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-lg text-white"
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-slate-900">{title}</span>
+        <span className="mt-0.5 block text-xs text-slate-500">{description}</span>
+      </span>
+      <span aria-hidden className="text-slate-300">
+        ›
+      </span>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={className}>
+      {inner}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={className}>
+      {inner}
+    </button>
+  );
+}
+
 /**
- * Pick an LP, then prepare the NDA email with the PDF already attached: the
+ * Create an LP or pick an existing one, then prepare the NDA email with the PDF already attached: the
  * device's share sheet where available (phones, tablets), otherwise an unsent
  * .eml for Outlook. Admins can then mark the NDA as Sent in one tap.
  */
@@ -38,6 +81,8 @@ export default function SendNdaPanel({
   const [copied, setCopied] = useState(false);
   const [marking, setMarking] = useState(false);
   const latestId = useRef<string | null>(null);
+  const [mode, setMode] = useState<"choose" | "existing">("choose");
+  const [query, setQuery] = useState("");
 
   // The PDF is fetched as soon as an LP is picked, so "Prepare email" can open
   // the share sheet straight away (browsers only allow sharing files shortly
@@ -142,17 +187,38 @@ export default function SendNdaPanel({
 
   if (!lps) return <p className="text-sm text-slate-500">Loading LPs…</p>;
 
-  if (lps.length === 0) {
+  const createHref = `/cases/${caseData.slug}/track/new`;
+
+  // First step: create a new LP, or send to one that already exists. With no
+  // LPs yet there is nothing to pick, so only "create" is offered; people who
+  // can't add LPs go straight to the list.
+  if (mode === "choose" && (lps.length === 0 || isAdmin)) {
     return (
-      <div className="space-y-3 text-sm text-slate-600">
-        <p>No LPs yet. Add one on the Details page to generate an NDA.</p>
+      <div className="space-y-3">
+        <p className="text-sm text-slate-500">
+          Who is this NDA for? It&apos;s generated from the LP&apos;s details.
+        </p>
         {isAdmin && (
-          <Link
-            href={`/cases/${caseData.slug}/track/new`}
-            className="inline-block rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            + Add LP
-          </Link>
+          <ChoiceCard
+            href={createHref}
+            icon="＋"
+            title="Create a new LP"
+            description="Send them a link to fill in their details, or enter them yourself."
+          />
+        )}
+        {lps.length > 0 ? (
+          <ChoiceCard
+            onClick={() => setMode("existing")}
+            icon="✉"
+            title="Send to an existing LP"
+            description={`Pick from ${lps.length} LP${lps.length === 1 ? "" : "s"} already on this deal.`}
+          />
+        ) : (
+          <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            {isAdmin
+              ? "No LPs on this deal yet, so start by creating one."
+              : "No LPs on this deal yet."}
+          </p>
         )}
       </div>
     );
@@ -160,21 +226,59 @@ export default function SendNdaPanel({
 
   const selected = lps.find((l) => l.id === selectedId) ?? null;
   const pdfState = selected && pdf?.id === selected.id ? pdf : null;
+  const q = query.trim().toLowerCase();
+  const visible = q
+    ? lps.filter((l) =>
+        `${ndaCounterpartyName(l)} ${l.email ?? ""}`.toLowerCase().includes(q)
+      )
+    : lps;
 
   return (
     <div className="space-y-4">
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => {
+            setMode("choose");
+            setSelectedId(null);
+            setQuery("");
+          }}
+          className="text-sm text-slate-500 hover:text-slate-900"
+        >
+          ← Back
+        </button>
+      )}
       <p className="text-sm text-slate-500">Pick an LP to send the NDA to.</p>
-      <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200">
-        {lps.map((lp) => (
+      {lps.length > 5 && (
+        <input
+          className="input"
+          type="search"
+          placeholder="Search by name or email"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      )}
+      <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        {visible.map((lp) => (
           <li key={lp.id}>
             <button
               type="button"
               onClick={() => select(lp)}
-              className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 ${
+              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
                 lp.id === selectedId ? "bg-slate-50" : ""
               }`}
             >
-              <span className="min-w-0">
+              <span
+                aria-hidden
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                  lp.id === selectedId
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {ndaCounterpartyName(lp).charAt(0).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-slate-900">
                   {ndaCounterpartyName(lp)}
                 </span>
@@ -186,6 +290,11 @@ export default function SendNdaPanel({
             </button>
           </li>
         ))}
+        {visible.length === 0 && (
+          <li className="px-4 py-6 text-center text-sm text-slate-500">
+            No LP matches &ldquo;{query}&rdquo;.
+          </li>
+        )}
       </ul>
 
       {selected && (
