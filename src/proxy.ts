@@ -5,7 +5,8 @@ import { getRole } from "@/lib/auth";
 const PUBLIC_PATHS = ["/login"];
 // Private single-use links LPs open without an account (the token in the URL
 // is the credential); the API routes behind them only touch that one request.
-const PUBLIC_PREFIXES = ["/lp-request/", "/api/lp-requests/"];
+// /api/agent/ is for Claude on a member's PC: those routes check their own bearer token.
+const PUBLIC_PREFIXES = ["/lp-request/", "/api/lp-requests/", "/api/agent/"];
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??

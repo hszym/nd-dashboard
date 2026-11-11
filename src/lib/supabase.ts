@@ -196,12 +196,24 @@ export interface LpRequest {
 export type QuestionStatus = "open" | "answered";
 
 /** A shared open question on a deal (table `case_questions`). */
+export type QuestionPriority = "normal" | "blocking";
+
 export interface CaseQuestion {
   id: string;
   case_id: string;
   question: string;
   answer: string | null;
   status: QuestionStatus;
+  /** Id used in the deal's 00_README.md (Q-001); null until Claude has written it into the file. */
+  ref: string | null;
+  priority: QuestionPriority;
+  /** Document or review the question came from. */
+  source: string | null;
+  /**
+   * When the MD file last matched this row. null = a change made in the dashboard
+   * (new question, answer, reopen, priority) that Claude has not yet written into the file.
+   */
+  md_synced_at: string | null;
   created_by: string | null;
   created_at: string;
   answered_at: string | null;
