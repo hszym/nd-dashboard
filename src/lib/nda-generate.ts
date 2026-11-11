@@ -62,12 +62,7 @@ export async function buildFilledNdaDocx(
   } else if (nda.counterparty_type === "company") {
     templateBuffer = readDefaultCompanyTemplate();
   } else {
-    return {
-      ok: false,
-      error:
-        "No individual-counterparty template uploaded for this project yet. Drop one in Project templates on the NDAs page.",
-      status: 501,
-    };
+    templateBuffer = readDefaultIndividualTemplate();
   }
 
   try {
@@ -90,6 +85,16 @@ const DEFAULT_COMPANY_TEMPLATE_PATH = path.join(
 /** The bundled default company template, used when a project hasn't uploaded its own. */
 export function readDefaultCompanyTemplate(): Buffer {
   return fs.readFileSync(DEFAULT_COMPANY_TEMPLATE_PATH);
+}
+
+const DEFAULT_INDIVIDUAL_TEMPLATE_PATH = path.join(
+  process.cwd(),
+  "src/lib/templates/nda-individual-template.docx"
+);
+
+/** The bundled default individual template, used when a project hasn't uploaded its own. */
+export function readDefaultIndividualTemplate(): Buffer {
+  return fs.readFileSync(DEFAULT_INDIVIDUAL_TEMPLATE_PATH);
 }
 
 /**

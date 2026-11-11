@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readDefaultCompanyTemplate } from "@/lib/nda-generate";
+import {
+  readDefaultCompanyTemplate,
+  readDefaultIndividualTemplate,
+} from "@/lib/nda-generate";
 import { getRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -55,13 +58,11 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  } else if (type === "company") {
-    buffer = readDefaultCompanyTemplate();
   } else {
-    return NextResponse.json(
-      { error: "No individual template uploaded for this project yet." },
-      { status: 404 }
-    );
+    buffer =
+      type === "company"
+        ? readDefaultCompanyTemplate()
+        : readDefaultIndividualTemplate();
   }
 
   const fileName = `NDA Template (${type}) - ${project.name ?? "project"}`.replace(

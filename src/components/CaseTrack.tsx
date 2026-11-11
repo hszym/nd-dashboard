@@ -125,8 +125,7 @@ export default function CaseTrack({
           </h3>
           <p className="mt-1 text-xs text-slate-500">
             Upload this project&apos;s own .docx template. NDAs generated for it use
-            it instead of the shared default — company template only, until an
-            individual template is uploaded.
+            it instead of the shared default for that counterparty type.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
@@ -159,14 +158,13 @@ export default function CaseTrack({
                   updateTemplate("nda_template_individual_url", url)
                 }
               />
-              {templates.nda_template_individual_url && (
-                <a
-                  href={`/api/ndas/template?caseId=${caseData.id}&type=individual`}
-                  className="mt-2 inline-block text-xs font-medium text-slate-600 hover:text-slate-900"
-                >
-                  ↓ Download template
-                </a>
-              )}
+              <a
+                href={`/api/ndas/template?caseId=${caseData.id}&type=individual`}
+                className="mt-2 inline-block text-xs font-medium text-slate-600 hover:text-slate-900"
+              >
+                ↓ Download template
+                {templates.nda_template_individual_url ? "" : " (shared default)"}
+              </a>
             </div>
           </div>
         </div>
