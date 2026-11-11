@@ -62,5 +62,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // apple-icon.png must stay public: iOS fetches it without the user's session
+  // when adding the site to the Home Screen, and a login redirect breaks it.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|apple-icon).*)"],
 };
