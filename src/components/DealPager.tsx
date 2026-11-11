@@ -278,7 +278,16 @@ export default function DealPager({
       </Sheet>
 
       <Sheet open={sheet === "nda"} onClose={() => setSheet(null)} title="Send NDA">
-        <SendNdaPanel caseData={caseData} lps={lps} isAdmin={isAdmin} />
+        <SendNdaPanel
+          caseData={caseData}
+          lps={lps}
+          isAdmin={isAdmin}
+          onLpUpdated={(id, patch) =>
+            setLps((prev) =>
+              prev ? prev.map((l) => (l.id === id ? { ...l, ...patch } : l)) : prev
+            )
+          }
+        />
       </Sheet>
 
       <Sheet
