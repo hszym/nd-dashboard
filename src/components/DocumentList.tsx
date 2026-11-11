@@ -12,6 +12,7 @@ import {
   attachmentStoragePath,
 } from "@/lib/supabase";
 import IntroEmailCard from "@/components/IntroEmailPanel";
+import type { IntroEmailTemplate } from "@/lib/intro-email";
 
 const SVG_PROPS = {
   viewBox: "0 0 24 24",
@@ -46,6 +47,7 @@ export default function DocumentList({
   documents,
   editable,
   folderUrl,
+  introEmail,
   onUpdate,
 }: {
   caseId: string;
@@ -54,6 +56,8 @@ export default function DocumentList({
   editable: boolean;
   /** The deal's OneDrive folder, offered as a shortcut for admins. */
   folderUrl?: string | null;
+  /** The deal's own intro email wording, if it has one. */
+  introEmail?: IntroEmailTemplate | null;
   onUpdate: (
     doc: CaseDocument,
     patch: Partial<Pick<CaseDocument, "file_url" | "attachment_url">>
@@ -106,6 +110,7 @@ export default function DocumentList({
               <li key={doc.type}>
                 <IntroEmailCard
                   caseName={caseName}
+                  template={introEmail}
                   sources={attachments.map((a) => ({
                     label: a.type,
                     url: a.attachment_url!,

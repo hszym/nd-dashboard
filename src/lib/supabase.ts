@@ -55,6 +55,10 @@ export interface Case {
   drive_folder_url: string | null;
   /** The deal's OneDrive folder; Claude Code works inside it (MD files hold the details). */
   onedrive_url: string | null;
+  /** Intro email template for this deal (copied from its OneDrive intro-email.md). */
+  intro_email_subject: string | null;
+  intro_email_text: string | null;
+  intro_email_html: string | null;
   /** The deal's own website, shown as a link under its logo. */
   website_url: string | null;
   brand_colors: BrandColor[];

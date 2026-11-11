@@ -6,6 +6,7 @@ import {
   introEmailContent,
   attachmentFileName,
   type EmailAttachment,
+  type IntroEmailTemplate,
 } from "@/lib/intro-email";
 
 export interface IntroAttachmentSource {
@@ -26,9 +27,12 @@ type Loaded = { label: string; file: File };
 export default function IntroEmailCard({
   caseName,
   sources,
+  template,
 }: {
   caseName: string;
   sources: IntroAttachmentSource[];
+  /** This deal's own wording, if it has one (otherwise the default text is used). */
+  template?: IntroEmailTemplate | null;
 }) {
   const [files, setFiles] = useState<Loaded[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +76,10 @@ export default function IntroEmailCard({
 
   async function open(loaded: Loaded[]) {
     setNotice(null);
-    const { subject, body } = introEmailContent(
+    const { subject, body, html } = introEmailContent(
       caseName,
-      loaded.map((l) => l.label.toLowerCase())
+      loaded.map((l) => l.label.toLowerCase()),
+      template
     );
     const shareFiles = loaded.map((l) => l.file);
 
@@ -96,7 +101,7 @@ export default function IntroEmailCard({
         bytes: new Uint8Array(await l.file.arrayBuffer()),
       }))
     );
-    const eml = buildIntroEml("", subject, body, attachments);
+    const eml = buildIntroEml("", subject, body, attachments, html);
     const url = URL.createObjectURL(new Blob([eml], { type: "message/rfc822" }));
     const a = document.createElement("a");
     a.href = url;

@@ -284,6 +284,11 @@ export default function DealPager({
           editable={isAdmin}
           caseName={caseData.name}
           folderUrl={caseData.onedrive_url}
+          introEmail={{
+            subject: caseData.intro_email_subject,
+            text: caseData.intro_email_text,
+            html: caseData.intro_email_html,
+          }}
           onUpdate={onUpdateDocument}
         />
       </Sheet>

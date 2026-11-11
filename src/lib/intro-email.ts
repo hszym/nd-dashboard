@@ -4,24 +4,70 @@ export interface EmailAttachment {
   bytes: Uint8Array;
 }
 
-/** The intro email wording, shared by the share sheet and the .eml. */
-export function introEmailContent(caseName: string, labels: string[]) {
-  const what =
-    labels.length === 0
-      ? ""
-      : labels.length === 1
-        ? `Attached is the ${labels[0]}.`
-        : `Attached are the ${labels.slice(0, -1).join(", ")} and the ${labels[labels.length - 1]}.`;
-  const subject = caseName;
-  const body = [
-    "Hello,",
-    "",
-    "What do you think of this project?",
-    ...(what ? ["", what] : []),
-    "",
-    "Best regards,",
-  ].join("\n");
-  return { subject, body };
+/** A deal's own intro email template; every part is optional. */
+export interface IntroEmailTemplate {
+  subject?: string | null;
+  text?: string | null;
+  html?: string | null;
+}
+
+export interface IntroEmailContent {
+  subject: string;
+  /** Plain text: used by the share sheet and as the text part of the .eml. */
+  body: string;
+  /** Only when the deal's template has an HTML version; added to the .eml. */
+  html: string | null;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** "the 2-pager and the deck": the attached documents, as a phrase. */
+function attachmentsPhrase(labels: string[]): string {
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return `the ${labels[0]}`;
+  return `the ${labels.slice(0, -1).join(", the ")} and the ${labels[labels.length - 1]}`;
+}
+
+/**
+ * The intro email wording. A deal's template wins part by part; any part it
+ * leaves empty falls back to the default. In a template, `{project}` becomes
+ * the deal name and `{attachments}` becomes e.g. "the 2-pager and the deck".
+ */
+export function introEmailContent(
+  caseName: string,
+  labels: string[],
+  template?: IntroEmailTemplate | null
+): IntroEmailContent {
+  const phrase = attachmentsPhrase(labels);
+  const fill = (s: string, escape: (v: string) => string = (v) => v) =>
+    s
+      .replace(/\{project\}/gi, escape(caseName))
+      .replace(/\{attachments\}/gi, escape(phrase || "the documents"));
+
+  const subject = template?.subject?.trim()
+    ? fill(template.subject.trim())
+    : caseName;
+
+  const body = template?.text?.trim()
+    ? fill(template.text.trim())
+    : [
+        "Hello,",
+        "",
+        "What do you think of this project?",
+        ...(phrase ? ["", `Attached ${labels.length === 1 ? "is" : "are"} ${phrase}.`] : []),
+        "",
+        "Best regards,",
+      ].join("\n");
+
+  const html = template?.html?.trim() ? fill(template.html.trim(), escapeHtml) : null;
+
+  return { subject, body, html };
 }
 
 /** File name safe on every OS, e.g. "Domino Nova - Deck.pdf". */
@@ -46,34 +92,59 @@ function wrapBase64(b64: string): string {
 
 /**
  * Builds an unsent email (`.eml`) with the PDFs attached. The `X-Unsent: 1`
- * header makes Outlook open it as a draft ready to send.
+ * header makes Outlook open it as a draft ready to send. With an HTML version
+ * the body is sent as plain text + HTML, and the mail app shows the HTML.
  */
 export function buildIntroEml(
   to: string,
   subject: string,
   body: string,
-  attachments: EmailAttachment[]
+  attachments: EmailAttachment[],
+  html?: string | null
 ): string {
   const enc = new TextEncoder();
-  const boundary = `----=_intro_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  const rand = `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  const mixed = `----=_intro_${rand}`;
+  const alt = `----=_alt_${rand}`;
+
+  const textPart = (): string[] => [
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    wrapBase64(toBase64(enc.encode(body))),
+  ];
 
   const lines: string[] = [
     "X-Unsent: 1",
     ...(to ? [`To: ${to}`] : []),
     `Subject: =?UTF-8?B?${toBase64(enc.encode(subject))}?=`,
     "MIME-Version: 1.0",
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    `Content-Type: multipart/mixed; boundary="${mixed}"`,
     "",
-    `--${boundary}`,
-    'Content-Type: text/plain; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
-    "",
-    wrapBase64(toBase64(enc.encode(body))),
+    `--${mixed}`,
   ];
+
+  if (html) {
+    lines.push(
+      `Content-Type: multipart/alternative; boundary="${alt}"`,
+      "",
+      `--${alt}`,
+      ...textPart(),
+      `--${alt}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      wrapBase64(toBase64(enc.encode(html))),
+      `--${alt}--`
+    );
+  } else {
+    lines.push(...textPart());
+  }
+
   for (const file of attachments) {
     const asciiName = file.name.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
     lines.push(
-      `--${boundary}`,
+      `--${mixed}`,
       `Content-Type: application/pdf; name="${asciiName}"`,
       `Content-Disposition: attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(file.name)}`,
       "Content-Transfer-Encoding: base64",
@@ -81,6 +152,6 @@ export function buildIntroEml(
       wrapBase64(toBase64(file.bytes))
     );
   }
-  lines.push(`--${boundary}--`, "");
+  lines.push(`--${mixed}--`, "");
   return lines.join("\r\n");
 }
