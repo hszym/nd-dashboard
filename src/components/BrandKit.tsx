@@ -48,13 +48,16 @@ export default function BrandKit({
   async function saveDetails() {
     setSaving(true);
     setError(null);
+    // Only rows left completely blank are dropped; a label is optional.
     const cleaned = colors
       .map((c) => ({ label: c.label.trim(), hex: c.hex.trim().replace("#", "") }))
-      .filter((c) => c.label && c.hex);
+      .filter((c) => c.label || c.hex);
     const bad = cleaned.find((c) => !HEX.test(c.hex));
     if (bad) {
       setSaving(false);
-      setError(`"${bad.label}" needs a 6-digit hex color, like 1C3D5A.`);
+      setError(
+        `${bad.label ? `"${bad.label}"` : "A color"} needs a 6-digit hex code, like 1C3D5A.`
+      );
       return;
     }
     const { error } = await supabase
@@ -223,7 +226,7 @@ export default function BrandKit({
                       />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium text-slate-900">
-                          {c.label}
+                          {c.label || `Color ${i + 1}`}
                         </span>
                         <span className="block text-xs text-slate-500">
                           {copied === c.hex ? "Copied" : `#${c.hex.replace("#", "").toUpperCase()}`}

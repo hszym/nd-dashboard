@@ -59,7 +59,9 @@ export default function NewCasePage() {
     setError(null);
 
     const slug = slugify(name);
-    const cleanColors = colors.filter((c) => c.label.trim() && c.hex.trim());
+    const cleanColors = colors
+      .map((c) => ({ label: c.label.trim(), hex: c.hex.trim().replace("#", "") }))
+      .filter((c) => /^[0-9a-fA-F]{6}$/.test(c.hex));
 
     const { data: caseRow, error: caseError } = await supabase
       .from("cases")
