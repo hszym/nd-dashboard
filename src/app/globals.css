@@ -50,6 +50,9 @@ body {
 .ambient {
   background-color: #e9ecf0;
   background-image:
+    /* Fade the very top into the status-bar color (see theme-color in
+       AmbientBackground) so there is no visible edge under the phone's clock. */
+    linear-gradient(to bottom, #e9ecf0 0, rgb(233 236 240 / 0.85) 40px, rgb(233 236 240 / 0) 220px),
     radial-gradient(
       ellipse 120% 70% at 15% 10%,
       color-mix(in srgb, var(--ambient-a) 42%, transparent),
