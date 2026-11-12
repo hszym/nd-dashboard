@@ -1,6 +1,6 @@
 // Shared rules for choosing a password (used by the account and reset pages).
 
-export const MIN_PASSWORD_LENGTH = 10;
+export const MIN_PASSWORD_LENGTH = 8;
 
 /** Returns an error message, or null when the new password is acceptable. */
 export function validateNewPassword(password: string, confirm: string, current?: string): string | null {
