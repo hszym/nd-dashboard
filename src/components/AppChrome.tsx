@@ -41,6 +41,9 @@ export default function AppChrome({
           <Link href="/tokens" className="font-medium hover:text-slate-500">
             API tokens
           </Link>
+          <Link href="/account" className="font-medium hover:text-slate-500">
+            Account
+          </Link>
           <LogoutButton className="text-xs text-slate-500 hover:text-slate-900" />
         </div>
       ) : (
@@ -63,6 +66,9 @@ export default function AppChrome({
               )}
               <Link href="/tokens" className="text-slate-600 hover:text-slate-900">
                 API tokens
+              </Link>
+              <Link href="/account" className="text-slate-600 hover:text-slate-900">
+                Account
               </Link>
               {role === "team" && (
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">

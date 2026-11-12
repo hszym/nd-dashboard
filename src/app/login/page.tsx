@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -73,6 +74,12 @@ function LoginForm() {
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
+          <Link
+            href="/forgot-password"
+            className="block text-center text-xs text-slate-500 hover:text-slate-900"
+          >
+            Forgot your password?
+          </Link>
         </form>
       </div>
     </div>

@@ -73,6 +73,8 @@ export async function POST(request: NextRequest) {
     email,
     password: temporaryPassword,
     email_confirm: true,
+    // The new member must choose their own password at the first sign-in.
+    user_metadata: { must_change_password: true },
   });
 
   if (createError || !created.user) {

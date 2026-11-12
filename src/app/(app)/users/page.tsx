@@ -14,7 +14,7 @@ export default function UsersPage() {
   const [email, setEmail] = useState("");
   const [newRole, setNewRole] = useState<Role>("team");
   const [creating, setCreating] = useState(false);
-  const [justCreated, setJustCreated] = useState<{ email: string; temporaryPassword: string } | null>(
+  const [justCreated, setJustCreated] = useState<{ email: string; temporaryPassword: string; reset?: boolean } | null>(
     null
   );
 
@@ -72,6 +72,19 @@ export default function UsersPage() {
     load();
   }
 
+  async function handleResetPassword(u: AdminUserRow) {
+    if (!confirm(`Give ${u.email} a new temporary password? Their current password stops working.`)) return;
+    setError(null);
+    setJustCreated(null);
+    const res = await fetch(`/api/admin/users/${u.id}/reset-password`, { method: "POST" });
+    const body = await res.json();
+    if (!res.ok) {
+      setError(body.error ?? "Could not reset the password.");
+      return;
+    }
+    setJustCreated({ email: body.email, temporaryPassword: body.temporaryPassword, reset: true });
+  }
+
   async function handleDelete(u: AdminUserRow) {
     if (!confirm(`Remove ${u.email}? They'll lose access immediately.`)) return;
     setError(null);
@@ -112,10 +125,10 @@ export default function UsersPage() {
       {justCreated && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
           <p className="font-medium text-amber-900">
-            Account created for {justCreated.email}
+            {justCreated.reset ? "Password reset for" : "Account created for"} {justCreated.email}
           </p>
           <p className="mt-1 text-amber-800">
-            Temporary password (shown once — share it with them now):{" "}
+            Temporary password (shown once — share it with them now; they will be asked to choose their own at sign-in):{" "}
             <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono">
               {justCreated.temporaryPassword}
             </code>
@@ -202,12 +215,20 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {!isSelf && (
-                      <button
-                        onClick={() => handleDelete(u)}
-                        className="text-xs text-slate-400 hover:text-red-500"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex justify-end gap-4">
+                        <button
+                          onClick={() => handleResetPassword(u)}
+                          className="text-xs text-slate-500 hover:text-slate-900"
+                        >
+                          Reset password
+                        </button>
+                        <button
+                          onClick={() => handleDelete(u)}
+                          className="text-xs text-slate-400 hover:text-red-500"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

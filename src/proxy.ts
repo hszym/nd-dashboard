@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getRole } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/forgot-password", "/reset-password"];
 // Private single-use links LPs open without an account (the token in the URL
 // is the credential); the API routes behind them only touch that one request.
 // /api/agent/ is for Claude on a member's PC: those routes check their own bearer token.
@@ -50,6 +50,15 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // An account created or reset with a temporary password must choose its own first.
+  if (
+    user.user_metadata?.must_change_password === true &&
+    pathname !== "/account" &&
+    !pathname.startsWith("/api/")
+  ) {
+    return NextResponse.redirect(new URL("/account?forced=1", request.url));
   }
 
   // Team members can't reach admin-only pages even by typing the URL.
