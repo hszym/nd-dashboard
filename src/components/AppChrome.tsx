@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import LogoutButton from "./LogoutButton";
+import SettingsMenu from "./SettingsMenu";
 
 type Role = "admin" | "team" | null;
 
@@ -27,24 +27,13 @@ export default function AppChrome({
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       {immersive ? (
-        <div className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-4 rounded-full glass px-4 py-2 text-xs text-slate-800 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.35)]">
+        <div className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-3 rounded-full glass py-1 pl-4 pr-1.5 text-xs text-slate-800 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.35)]">
           {isDeal && (
             <Link href="/" className="font-medium hover:text-slate-500">
               ← All deals
             </Link>
           )}
-          {role === "admin" && (
-            <Link href="/users" className="font-medium hover:text-slate-500">
-              Manage users
-            </Link>
-          )}
-          <Link href="/tokens" className="font-medium hover:text-slate-500">
-            API tokens
-          </Link>
-          <Link href="/account" className="font-medium hover:text-slate-500">
-            Account
-          </Link>
-          <LogoutButton className="text-xs text-slate-500 hover:text-slate-900" />
+          <SettingsMenu role={role} />
         </div>
       ) : (
         <header className="relative z-10 border-b border-slate-200/60 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
@@ -59,23 +48,7 @@ export default function AppChrome({
               </span>
             </Link>
             <nav className="flex items-center gap-4 text-sm">
-              {role === "admin" && (
-                <Link href="/users" className="text-slate-600 hover:text-slate-900">
-                  Manage users
-                </Link>
-              )}
-              <Link href="/tokens" className="text-slate-600 hover:text-slate-900">
-                API tokens
-              </Link>
-              <Link href="/account" className="text-slate-600 hover:text-slate-900">
-                Account
-              </Link>
-              {role === "team" && (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
-                  Team view
-                </span>
-              )}
-              <LogoutButton />
+              <SettingsMenu role={role} />
             </nav>
           </div>
         </header>
