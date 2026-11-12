@@ -27,6 +27,12 @@ type SheetKey = "standing" | "documents" | "nda" | "add" | null;
 
 const PAGES = ["Overview", "Details"] as const;
 
+// The pages sit side by side, so the row is as tall as the tallest one. A page
+// that is not showing is cut to about one screen so the visible page never
+// scrolls into empty space below its content.
+const INACTIVE_CLIP = (inactive: boolean) =>
+  inactive ? "max-h-[calc(100svh-6rem)] overflow-hidden" : "";
+
 /**
  * Deal page: two swipeable pages (Overview, Investors) in the same dark glass
  * style as the home carousel. Light sheets host the forms and lists.
@@ -148,7 +154,9 @@ export default function DealPager({
         className="no-scrollbar flex snap-x snap-mandatory items-start overflow-x-auto"
       >
         {/* Page 1: Overview */}
-        <section className="w-full shrink-0 snap-center px-5">
+        <section
+          className={`w-full shrink-0 snap-center px-5 ${INACTIVE_CLIP(page !== 0)}`}
+        >
           <div className="mx-auto max-w-md space-y-4">
             <div className="flex flex-col items-center text-center">
               <CaseLogo
@@ -204,7 +212,9 @@ export default function DealPager({
         </section>
 
         {/* Page 2: Details */}
-        <section className="w-full shrink-0 snap-center px-5">
+        <section
+          className={`w-full shrink-0 snap-center px-5 ${INACTIVE_CLIP(page !== 1)}`}
+        >
           <div className="mx-auto max-w-3xl space-y-4">
             <h2 className="text-center text-2xl font-semibold tracking-tight">
               Information
@@ -227,13 +237,6 @@ export default function DealPager({
                   onEdit={() => setEditing(true)}
                 />
               )}
-            </div>
-
-            <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
-              Brand Kit
-            </h2>
-            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
-              <BrandKit caseData={caseData} isAdmin={isAdmin} onSaved={onReload} />
             </div>
 
             <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
@@ -260,6 +263,13 @@ export default function DealPager({
                 </div>
               </>
             )}
+
+            <h2 className="pt-2 text-center text-2xl font-semibold tracking-tight">
+              Brand Kit
+            </h2>
+            <div className="rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
+              <BrandKit caseData={caseData} isAdmin={isAdmin} onSaved={onReload} />
+            </div>
           </div>
         </section>
       </div>

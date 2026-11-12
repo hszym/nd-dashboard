@@ -121,6 +121,8 @@ export default function DocumentList({
           }
 
           const canAttach = EMAIL_ATTACHMENT_TYPES.includes(doc.type);
+          // The Case Review is for the investment committee only: it looks different so nobody sends it out.
+          const isInternal = doc.type === "Case Review";
           const hasLink = Boolean(doc.file_url);
           const available = isReady(doc);
           const expanded = openType === doc.type && editable;
@@ -133,24 +135,41 @@ export default function DocumentList({
               ? "PDF ready for the intro email"
               : null;
 
+          const subtitleText = isInternal
+            ? [subtitle, "Internal, do not send out"].filter(Boolean).join(" · ")
+            : subtitle;
+
           const body = (
             <>
               <span
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
                   available
-                    ? "bg-emerald-50 text-emerald-600"
+                    ? isInternal
+                      ? "bg-rose-100 text-rose-600"
+                      : "bg-emerald-50 text-emerald-600"
                     : "bg-slate-100 text-slate-400"
                 }`}
               >
                 <FileIcon ready={available} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-slate-900">
-                  {doc.type}
+                <span className="flex items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-slate-900">
+                    {doc.type}
+                  </span>
+                  {isInternal && (
+                    <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700">
+                      Internal
+                    </span>
+                  )}
                 </span>
-                {subtitle && (
-                  <span className="mt-0.5 block truncate text-xs text-slate-400">
-                    {subtitle}
+                {subtitleText && (
+                  <span
+                    className={`mt-0.5 block truncate text-xs ${
+                      isInternal ? "text-rose-500" : "text-slate-400"
+                    }`}
+                  >
+                    {subtitleText}
                   </span>
                 )}
               </span>
@@ -168,8 +187,16 @@ export default function DocumentList({
           return (
             <li
               key={doc.type}
-              className={`rounded-2xl border bg-white transition-shadow ${
-                expanded ? "border-slate-300 shadow-sm" : "border-slate-200 hover:shadow-sm"
+              className={`rounded-2xl border transition-shadow ${
+                isInternal ? "bg-rose-50/60" : "bg-white"
+              } ${
+                expanded
+                  ? isInternal
+                    ? "border-rose-300 shadow-sm"
+                    : "border-slate-300 shadow-sm"
+                  : isInternal
+                    ? "border-rose-200 hover:shadow-sm"
+                    : "border-slate-200 hover:shadow-sm"
               }`}
             >
               <div className="flex items-center">
@@ -178,7 +205,7 @@ export default function DocumentList({
                     href={doc.file_url!}
                     target="_blank"
                     rel="noreferrer"
-                    className={`${rowClass} hover:bg-slate-50`}
+                    className={`${rowClass} ${isInternal ? "hover:bg-rose-50" : "hover:bg-slate-50"}`}
                   >
                     {body}
                   </a>
@@ -186,7 +213,7 @@ export default function DocumentList({
                   <button
                     type="button"
                     onClick={toggle}
-                    className={`${rowClass} hover:bg-slate-50`}
+                    className={`${rowClass} ${isInternal ? "hover:bg-rose-50" : "hover:bg-slate-50"}`}
                   >
                     {body}
                   </button>
