@@ -4,9 +4,11 @@ import { requireAgent } from "@/lib/agent-auth";
 import {
   AGENT_ATTACHMENT_TYPES,
   CASE_FILES_BUCKET_NAME,
+  DEAL_DOCUMENTS_BUCKET_NAME,
   cleanHttpsUrl,
   isDocumentStatus,
   isDocumentType,
+  mirrorPath,
 } from "@/lib/agent-documents";
 
 // A deal's documents for Claude: read what exists, then record each document's status,
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
   if (!deal) return NextResponse.json({ error: "Unknown deal." }, { status: 404 });
 
   const [{ data: documents, error }, { data: fields }] = await Promise.all([
-    admin.from("documents").select("id, type, status, file_url, attachment_url, updated_at").eq("case_id", deal.id),
+    admin.from("documents").select("id, type, status, file_url, attachment_url, mirror_path, mirror_hash, mirror_synced_at, updated_at").eq("case_id", deal.id),
     admin
       .from("cases")
       .select("sector, currency, amount_target, amount_remaining, deadline, website_url, intro_email_subject, intro_email_text, intro_email_html")
@@ -78,6 +80,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "The file was not found in storage. Upload it first." }, { status: 400 });
     }
     patch.attachment_url = admin.storage.from(CASE_FILES_BUCKET_NAME).getPublicUrl(p).data.publicUrl;
+  }
+  if (body.mirror_path !== undefined) {
+    if (type === "Intro Email") return NextResponse.json({ error: "The Intro Email has no PDF." }, { status: 400 });
+    if (body.mirror_path !== mirrorPath(deal.id, type)) {
+      return NextResponse.json({ error: "Invalid mirror path." }, { status: 400 });
+    }
+    const hash = body.mirror_hash;
+    if (typeof hash !== "string" || !/^[a-f0-9]{64}$/.test(hash)) {
+      return NextResponse.json({ error: "mirror_hash must be a SHA-256 hex string." }, { status: 400 });
+    }
+    // The file must already be in the private bucket (uploaded through the signed URL).
+    const [folder, name] = (body.mirror_path as string).split("/");
+    const { data: listed } = await admin.storage.from(DEAL_DOCUMENTS_BUCKET_NAME).list(folder, { search: name, limit: 5 });
+    if (!listed?.some((f) => f.name === name)) {
+      return NextResponse.json({ error: "The file was not found in storage. Upload it first." }, { status: 400 });
+    }
+    patch.mirror_path = body.mirror_path;
+    patch.mirror_hash = hash;
+    patch.mirror_synced_at = new Date().toISOString();
+    if (typeof body.mirror_source === "string") patch.mirror_source = body.mirror_source.slice(0, 200);
   }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
   patch.updated_at = new Date().toISOString();

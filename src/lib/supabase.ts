@@ -78,6 +78,10 @@ export interface CaseDocument {
   file_url: string | null;
   /** A PDF kept in the app (2-pager, Deck) so the intro email can attach it. */
   attachment_url: string | null;
+  /** Private copy of the PDF kept in the app (opened through a signed link). */
+  mirror_path: string | null;
+  mirror_synced_at: string | null;
+  mirror_source: string | null;
   updated_at: string;
 }
 
@@ -98,7 +102,7 @@ export function emailAttachments(documents: CaseDocument[]): CaseDocument[] {
  */
 export function isDocumentReady(doc: CaseDocument, all: CaseDocument[]): boolean {
   if (doc.type === "Intro Email") return emailAttachments(all).length > 0;
-  return Boolean(doc.file_url);
+  return Boolean(doc.file_url || doc.mirror_path);
 }
 
 /** Public bucket for the PDFs attached to emails (25 MB, PDF only). */

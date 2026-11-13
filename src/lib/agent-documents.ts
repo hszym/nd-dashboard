@@ -19,6 +19,14 @@ export const AGENT_ATTACHMENT_TYPES: AgentDocumentType[] = ["2-pager", "Deck"];
 
 export const CASE_FILES_BUCKET_NAME = "case-files";
 
+/** Private bucket holding one current PDF copy of each document (OneDrive stays the source). */
+export const DEAL_DOCUMENTS_BUCKET_NAME = "deal-documents";
+
+export function mirrorPath(caseId: string, type: AgentDocumentType): string {
+  const slug = type.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return `${caseId}/${slug}.pdf`;
+}
+
 export function isDocumentType(v: unknown): v is AgentDocumentType {
   return typeof v === "string" && (AGENT_DOCUMENT_TYPES as readonly string[]).includes(v);
 }

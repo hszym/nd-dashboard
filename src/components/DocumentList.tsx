@@ -123,17 +123,24 @@ export default function DocumentList({
           const canAttach = EMAIL_ATTACHMENT_TYPES.includes(doc.type);
           // The Case Review is for the investment committee only: it looks different so nobody sends it out.
           const isInternal = doc.type === "Case Review";
-          const hasLink = Boolean(doc.file_url);
+          // The copy kept in the app opens for the whole team; the OneDrive link is the fallback.
+          const hasMirror = Boolean(doc.mirror_path);
+          const hasLink = hasMirror || Boolean(doc.file_url);
+          const href = hasMirror ? `/api/documents/${doc.id}/open` : doc.file_url!;
           const available = isReady(doc);
           const expanded = openType === doc.type && editable;
 
           const toggle = () => setOpenType(expanded ? null : doc.type);
 
+          const updated =
+            hasMirror && doc.mirror_synced_at
+              ? `Updated ${new Date(doc.mirror_synced_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+              : null;
           const subtitle = !hasLink && editable
             ? "No link yet"
             : canAttach && doc.attachment_url
-              ? "PDF ready for the intro email"
-              : null;
+              ? ["PDF ready for the intro email", updated].filter(Boolean).join(" · ")
+              : updated;
 
           const subtitleText = isInternal
             ? [subtitle, "Internal, do not send out"].filter(Boolean).join(" · ")
@@ -202,7 +209,7 @@ export default function DocumentList({
               <div className="flex items-center">
                 {hasLink ? (
                   <a
-                    href={doc.file_url!}
+                    href={href}
                     target="_blank"
                     rel="noreferrer"
                     className={`${rowClass} ${isInternal ? "hover:bg-rose-50" : "hover:bg-slate-50"}`}
