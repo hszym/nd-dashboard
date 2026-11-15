@@ -13,12 +13,25 @@ type View = "table" | "kanban" | "week";
 const chip = "rounded-full px-2.5 py-0.5 text-[11px] font-medium";
 const input = "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none";
 
-export default function TrackerApp() {
-  const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+/**
+ * The tracker UI. With `fixedWorkspaceId` + `fixedProjectId` it is locked to one
+ * project (used on a deal page); without them it shows every workspace and project.
+ */
+export default function TrackerApp({
+  fixedWorkspaceId,
+  fixedProjectId,
+}: {
+  fixedWorkspaceId?: string;
+  fixedProjectId?: string;
+} = {}) {
+  const fixed = !!fixedWorkspaceId && !!fixedProjectId;
+  const [workspaces, setWorkspaces] = useState<Workspace[] | null>(
+    fixed ? [{ id: fixedWorkspaceId!, name: "" }] : null
+  );
+  const [workspaceId, setWorkspaceId] = useState<string | null>(fixedWorkspaceId ?? null);
   const [data, setData] = useState<TrackerData | null>(null);
   const [view, setView] = useState<View>("table");
-  const [project, setProject] = useState("");
+  const [project, setProject] = useState(fixedProjectId ?? "");
   const [status, setStatus] = useState("");
   const [responsible, setResponsible] = useState("");
   const [query, setQuery] = useState("");
@@ -26,11 +39,12 @@ export default function TrackerApp() {
   const [newText, setNewText] = useState("");
 
   useEffect(() => {
+    if (fixed) return;
     loadWorkspaces().then((w) => {
       setWorkspaces(w);
       setWorkspaceId((cur) => cur ?? w[0]?.id ?? null);
     });
-  }, []);
+  }, [fixed]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -132,13 +146,13 @@ export default function TrackerApp() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Tracker</h1>
-          {workspaces.length > 1 && (
+          {!fixed && <h1 className="text-xl font-semibold tracking-tight text-slate-900">Tracker</h1>}
+          {!fixed && workspaces.length > 1 && (
             <select className={input} value={workspaceId ?? ""} onChange={(e) => { setWorkspaceId(e.target.value); setProject(""); }}>
               {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select>
           )}
-          {workspaces.length === 1 && <span className="text-sm text-slate-500">{workspaces[0].name}</span>}
+          {!fixed && workspaces.length === 1 && <span className="text-sm text-slate-500">{workspaces[0].name}</span>}
         </div>
         <div className="flex gap-1 rounded-full bg-slate-100 p-1 text-sm">
           {([["table", "Table"], ["kanban", "Board"], ["week", "This week"]] as const).map(([v, l]) => (
@@ -148,7 +162,7 @@ export default function TrackerApp() {
       </div>
 
       {/* Project cards double as the overview and as a quick filter. */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className={`flex gap-2 overflow-x-auto pb-1 ${fixed ? "hidden" : ""}`}>
         <button onClick={() => setProject("")} className={`${chip} whitespace-nowrap border ${!project ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}>All projects</button>
         {data.projects.map((p) => (
           <button key={p.id} onClick={() => setProject(p.id)} className={`${chip} whitespace-nowrap border ${project === p.id ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}>{p.name}</button>

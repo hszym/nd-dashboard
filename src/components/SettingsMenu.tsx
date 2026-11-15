@@ -67,9 +67,6 @@ export default function SettingsMenu({ role }: { role: Role }) {
               Team view
             </p>
           )}
-          <Link href="/tracker" role="menuitem" onClick={() => setOpen(false)} className={itemClass}>
-            Tracker
-          </Link>
           <Link href="/account" role="menuitem" onClick={() => setOpen(false)} className={itemClass}>
             Account
           </Link>
