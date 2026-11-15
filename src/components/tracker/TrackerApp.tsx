@@ -179,7 +179,7 @@ export default function TrackerApp({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <input className={`${input} w-56`} placeholder="Search…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input className={`${input} w-full sm:w-56`} placeholder="Search…" value={query} onChange={(e) => setQuery(e.target.value)} />
         <select className={input} value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">All statuses</option>
           {data.statuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -188,14 +188,36 @@ export default function TrackerApp({
           <option value="">Everyone</option>
           {people.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <form onSubmit={addItem} className="ml-auto flex gap-2">
-          <input className={`${input} w-64`} placeholder="Quick add a to-do…" value={newText} onChange={(e) => setNewText(e.target.value)} />
+        <form onSubmit={addItem} className="flex w-full gap-2 sm:ml-auto sm:w-auto">
+          <input className={`${input} min-w-0 flex-1 sm:w-64 sm:flex-none`} placeholder="Quick add a to-do…" value={newText} onChange={(e) => setNewText(e.target.value)} />
           <button className="rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700">Add</button>
         </form>
       </div>
 
       {view === "table" && (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <>
+        {/* Phone: cards, so nothing scrolls sideways inside the swipeable deal pages. */}
+        <ul className="space-y-2 md:hidden">
+          {filtered.map((i) => (
+            <li
+              key={i.id}
+              onClick={() => setOpenItem(i)}
+              className={`cursor-pointer rounded-xl border border-slate-200 bg-white p-3 text-sm ${rowTone(i)}`}
+            >
+              <p className="text-slate-800">{i.details}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                <Dot id={i.status_id} />
+                {!fixed && <span>{projectOf(i.project_id)}</span>}
+                {topicOf(i.topic_id) && <span>{topicOf(i.topic_id)}</span>}
+                {i.priority && <span>{i.priority}</span>}
+                {i.responsible && <span>{i.responsible}</span>}
+                {i.due_date && <DueCell i={i} />}
+              </div>
+            </li>
+          ))}
+          {!filtered.length && <li className="py-6 text-center text-sm text-slate-400">No to-dos match.</li>}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white md:block">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
               <tr>
@@ -221,6 +243,7 @@ export default function TrackerApp({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {view === "kanban" && (
