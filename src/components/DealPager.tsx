@@ -60,7 +60,10 @@ export default function DealPager({
   const trackRef = useRef<HTMLDivElement>(null);
   const raf = useRef<number | null>(null);
   const pageRef = useRef(0);
+  const settle = useRef<number | null>(null);
+  const touching = useRef(false);
   const [page, setPage] = useState(0);
+  const [settledPage, setSettledPage] = useState(0);
   const [sheet, setSheet] = useState<SheetKey>(null);
   const [editing, setEditing] = useState(false);
   const [inboxKey, setInboxKey] = useState(0);
@@ -88,7 +91,18 @@ export default function DealPager({
     }
   }, []);
 
+  // Re-clip the inactive pages only once the swipe has settled (no scroll events
+  // for 150 ms and no finger down): changing their height mid-gesture makes iOS
+  // Safari abandon the scroll snap, leaving the track stuck between two pages.
+  const scheduleSettle = useCallback(() => {
+    if (settle.current !== null) window.clearTimeout(settle.current);
+    settle.current = window.setTimeout(() => {
+      if (!touching.current) setSettledPage(pageRef.current);
+    }, 150);
+  }, []);
+
   const onScroll = useCallback(() => {
+    scheduleSettle();
     if (raf.current !== null) return;
     raf.current = requestAnimationFrame(() => {
       raf.current = null;
@@ -101,11 +115,12 @@ export default function DealPager({
       // Coming back to the overview: refresh the LP/NDA counts.
       if (next === 0) loadLps();
     });
-  }, [loadLps]);
+  }, [loadLps, scheduleSettle]);
 
   useEffect(
     () => () => {
       if (raf.current !== null) cancelAnimationFrame(raf.current);
+      if (settle.current !== null) window.clearTimeout(settle.current);
     },
     []
   );
@@ -152,11 +167,22 @@ export default function DealPager({
       <div
         ref={trackRef}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory items-start overflow-x-auto overscroll-x-contain"
+        onTouchStart={() => {
+          touching.current = true;
+        }}
+        onTouchEnd={() => {
+          touching.current = false;
+          scheduleSettle();
+        }}
+        onTouchCancel={() => {
+          touching.current = false;
+          scheduleSettle();
+        }}
+        className="no-scrollbar flex snap-x snap-mandatory items-start overflow-x-auto"
       >
         {/* Page 1: Overview */}
         <section
-          className={`w-full shrink-0 snap-center px-5 ${INACTIVE_CLIP(page !== 0)}`}
+          className={`w-full shrink-0 snap-center snap-always px-5 ${INACTIVE_CLIP(settledPage !== 0)}`}
         >
           <div className="mx-auto max-w-md space-y-4">
             <div className="flex flex-col items-center text-center">
@@ -214,7 +240,7 @@ export default function DealPager({
 
         {/* Page 2: Details */}
         <section
-          className={`w-full shrink-0 snap-center px-5 ${INACTIVE_CLIP(page !== 1)}`}
+          className={`w-full shrink-0 snap-center snap-always px-5 ${INACTIVE_CLIP(settledPage !== 1)}`}
         >
           <div className="mx-auto max-w-3xl space-y-4">
             <h2 className="text-center text-2xl font-semibold tracking-tight">
@@ -276,7 +302,7 @@ export default function DealPager({
 
         {/* Page 3: Tracker */}
         <section
-          className={`w-full shrink-0 snap-center px-5 ${INACTIVE_CLIP(page !== 2)}`}
+          className={`w-full shrink-0 snap-center snap-always px-5 ${INACTIVE_CLIP(settledPage !== 2)}`}
         >
           <div className="mx-auto max-w-5xl space-y-4">
             <h2 className="text-center text-2xl font-semibold tracking-tight">Tracker</h2>
