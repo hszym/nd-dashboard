@@ -5,16 +5,30 @@ import { supabase } from "@/lib/supabase";
 import TrackerApp from "./TrackerApp";
 
 interface Linked { id: string; workspace_id: string }
-interface Candidate { id: string; name: string }
+
+const DEFAULT_STATUSES = [
+  { name: "Active", color: "#2563eb", is_active: true, is_done: false },
+  { name: "Next phase", color: "#9ca3af", is_active: false, is_done: false },
+  { name: "On hold", color: "#d97706", is_active: false, is_done: false },
+  { name: "Done", color: "#16a34a", is_active: false, is_done: true },
+];
 
 /**
- * Third page of a deal: the to-dos of the tracker project linked to this deal.
- * Admins can link one (tracker_projects.case_id) when none is linked yet.
+ * Third page of a deal: that deal's own tracker (tracker_projects.case_id = this deal).
+ * A deal never shows another deal's or workspace's to-dos. Admins can start an empty
+ * tracker for a deal that has none.
  */
-export default function CaseTracker({ caseId, isAdmin }: { caseId: string; isAdmin: boolean }) {
+export default function CaseTracker({
+  caseId,
+  caseName,
+  isAdmin,
+}: {
+  caseId: string;
+  caseName: string;
+  isAdmin: boolean;
+}) {
   const [linked, setLinked] = useState<Linked | null | undefined>(undefined);
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [pick, setPick] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -24,28 +38,30 @@ export default function CaseTracker({ caseId, isAdmin }: { caseId: string; isAdm
       .eq("case_id", caseId)
       .order("sort")
       .limit(1);
-    const row = (data?.[0] as Linked | undefined) ?? null;
-    setLinked(row);
-    if (!row && isAdmin) {
-      const { data: free } = await supabase
-        .from("tracker_projects")
-        .select("id,name")
-        .is("case_id", null)
-        .order("name");
-      setCandidates((free as Candidate[]) ?? []);
-    }
-  }, [caseId, isAdmin]);
+    setLinked((data?.[0] as Linked | undefined) ?? null);
+  }, [caseId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset and reload when the deal changes
+    setLinked(undefined);
     load();
   }, [load]);
 
-  async function link() {
-    if (!pick) return;
+  async function start() {
+    setBusy(true);
     setError(null);
-    const { error } = await supabase.from("tracker_projects").update({ case_id: caseId }).eq("id", pick);
-    if (error) return setError(error.message);
+    const fail = (m: string) => { setError(m); setBusy(false); };
+    const { data: ws, error: e1 } = await supabase
+      .from("tracker_workspaces").insert({ name: caseName }).select("id").single();
+    if (e1 || !ws) return fail(e1?.message ?? "Could not create the tracker.");
+    const { error: e2 } = await supabase.from("tracker_statuses").insert(
+      DEFAULT_STATUSES.map((s, i) => ({ ...s, workspace_id: ws.id, sort: i }))
+    );
+    if (e2) return fail(e2.message);
+    const { error: e3 } = await supabase
+      .from("tracker_projects").insert({ workspace_id: ws.id, name: caseName, case_id: caseId });
+    if (e3) return fail(e3.message);
+    setBusy(false);
     load();
   }
 
@@ -54,23 +70,22 @@ export default function CaseTracker({ caseId, isAdmin }: { caseId: string; isAdm
   if (!linked) {
     return (
       <div className="space-y-3 text-sm text-slate-600">
-        <p>No tracker is linked to this deal yet.</p>
-        {isAdmin && candidates.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <select value={pick} onChange={(e) => setPick(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-1.5">
-              <option value="">Choose a tracker project…</option>
-              {candidates.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <button onClick={link} disabled={!pick} className="rounded-full bg-slate-900 px-4 py-1.5 font-medium text-white disabled:opacity-50">
-              Link
-            </button>
-          </div>
+        <p>No tracker for this deal yet.</p>
+        {isAdmin && (
+          <button
+            onClick={start}
+            disabled={busy}
+            className="rounded-full bg-slate-900 px-4 py-1.5 font-medium text-white disabled:opacity-50"
+          >
+            {busy ? "Creating…" : "Start a tracker for this deal"}
+          </button>
         )}
-        {isAdmin && candidates.length === 0 && <p className="text-slate-400">No unlinked tracker project available. Import a workbook first.</p>}
         {error && <p className="text-red-600">{error}</p>}
       </div>
     );
   }
 
-  return <TrackerApp fixedWorkspaceId={linked.workspace_id} fixedProjectId={linked.id} />;
+  return (
+    <TrackerApp key={linked.id} fixedWorkspaceId={linked.workspace_id} fixedProjectId={linked.id} />
+  );
 }

@@ -199,15 +199,17 @@ export default function TrackerApp({
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
               <tr>
-                {["Project", "Topic", "Details", "Status", "Priority", "Urg.", "Responsibility", "Due"].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
+                {["Project", "Topic", "Details", "Status", "Priority", "Urg.", "Responsibility", "Due"]
+                  .filter((h) => !(fixed && h === "Project"))
+                  .map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {filtered.map((i) => (
                 <tr key={i.id} onClick={() => setOpenItem(i)} className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${rowTone(i)}`}>
-                  <td className="whitespace-nowrap px-3 py-2">{projectOf(i.project_id)}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{topicOf(i.topic_id)}</td>
-                  <td className="min-w-[22rem] px-3 py-2">{i.details}</td>
+                  {!fixed && <td className="whitespace-nowrap px-3 py-2">{projectOf(i.project_id)}</td>}
+                  <td className="px-3 py-2">{topicOf(i.topic_id)}</td>
+                  <td className="min-w-[16rem] px-3 py-2">{i.details}</td>
                   <td className="px-3 py-2"><Dot id={i.status_id} /></td>
                   <td className="px-3 py-2">{i.priority ?? "—"}</td>
                   <td className="px-3 py-2">{i.urgency ?? "—"}</td>
@@ -215,7 +217,7 @@ export default function TrackerApp({
                   <td className="whitespace-nowrap px-3 py-2"><DueCell i={i} /></td>
                 </tr>
               ))}
-              {!filtered.length && <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">No to-dos match.</td></tr>}
+              {!filtered.length && <tr><td colSpan={fixed ? 7 : 8} className="px-3 py-6 text-center text-slate-400">No to-dos match.</td></tr>}
             </tbody>
           </table>
         </div>

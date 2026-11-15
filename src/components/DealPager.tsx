@@ -152,7 +152,7 @@ export default function DealPager({
       <div
         ref={trackRef}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory items-start overflow-x-auto"
+        className="no-scrollbar flex snap-x snap-mandatory items-start overflow-x-auto overscroll-x-contain"
       >
         {/* Page 1: Overview */}
         <section
@@ -281,7 +281,7 @@ export default function DealPager({
           <div className="mx-auto max-w-5xl space-y-4">
             <h2 className="text-center text-2xl font-semibold tracking-tight">Tracker</h2>
             <div className="rounded-[1.75rem] bg-white p-5 text-slate-900 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.3)]">
-              <CaseTracker caseId={caseData.id} isAdmin={isAdmin} />
+              <CaseTracker key={caseData.id} caseId={caseData.id} caseName={caseData.name} isAdmin={isAdmin} />
             </div>
           </div>
         </section>
