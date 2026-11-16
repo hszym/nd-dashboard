@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SettingsMenu from "./SettingsMenu";
+import TasksLink from "./TasksLink";
 
 type Role = "admin" | "team" | null;
 
@@ -33,6 +34,7 @@ export default function AppChrome({
               ← All deals
             </Link>
           )}
+          <TasksLink />
           <SettingsMenu role={role} />
         </div>
       ) : (
@@ -48,6 +50,7 @@ export default function AppChrome({
               </span>
             </Link>
             <nav className="flex items-center gap-4 text-sm">
+              <TasksLink className="text-slate-700" />
               <SettingsMenu role={role} />
             </nav>
           </div>

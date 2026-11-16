@@ -82,6 +82,9 @@ export interface CaseDocument {
   mirror_path: string | null;
   mirror_synced_at: string | null;
   mirror_source: string | null;
+  /** Who has to provide it (set through `assign_document`). */
+  assignee_id?: string | null;
+  due_date?: string | null;
   updated_at: string;
 }
 
@@ -221,6 +224,9 @@ export interface CaseQuestion {
   created_by: string | null;
   created_at: string;
   answered_at: string | null;
+  /** Who has to answer; null = nobody yet (anyone can take it). Not part of the MD file. */
+  assignee_id: string | null;
+  due_date: string | null;
 }
 
 export type InboxStatus = "to_review" | "reviewed";

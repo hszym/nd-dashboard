@@ -72,6 +72,23 @@ export default function UsersPage() {
     load();
   }
 
+  async function handleNameChange(u: AdminUserRow, name: string) {
+    const next = name.trim();
+    if (!next || next === (u.display_name ?? "")) return;
+    setError(null);
+    const res = await fetch(`/api/admin/users/${u.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_name: next }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      setError(body.error ?? "Could not update the name.");
+      return;
+    }
+    load();
+  }
+
   async function handleResetPassword(u: AdminUserRow) {
     if (!confirm(`Give ${u.email} a new temporary password? Their current password stops working.`)) return;
     setError(null);
@@ -184,6 +201,7 @@ export default function UsersPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
             <tr>
+              <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Added</th>
@@ -195,6 +213,19 @@ export default function UsersPage() {
               const isSelf = u.id === currentUserId;
               return (
                 <tr key={u.id}>
+                  <td className="px-4 py-3">
+                    <input
+                      key={u.display_name ?? ""}
+                      defaultValue={u.display_name ?? ""}
+                      aria-label={`Name of ${u.email}`}
+                      maxLength={80}
+                      onBlur={(e) => handleNameChange(u, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                      }}
+                      className="w-40 rounded-md border border-transparent px-2 py-1 text-sm text-slate-900 hover:border-slate-200 focus:border-slate-400 focus:outline-none"
+                    />
+                  </td>
                   <td className="px-4 py-3 text-slate-900">
                     {u.email}
                     {isSelf && <span className="ml-2 text-xs text-slate-400">(you)</span>}

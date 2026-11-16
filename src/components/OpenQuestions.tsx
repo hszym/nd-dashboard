@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase, CaseQuestion } from "@/lib/supabase";
 import { formatDate } from "@/lib/utils";
+import AssigneeSelect from "@/components/AssigneeSelect";
+import {
+  TeamMember,
+  assignQuestion,
+  currentUserId,
+  isOverdue,
+  loadTeam,
+} from "@/lib/tasks";
 
 /**
  * Shared list of open questions for a deal. Claude writes questions into the deal's
@@ -24,6 +32,31 @@ export default function OpenQuestions({
   const [adding, setAdding] = useState(false);
   const [answeringId, setAnsweringId] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState("");
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [me, setMe] = useState<string | null>(null);
+  const [newAssignee, setNewAssignee] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadTeam().then(setTeam);
+    currentUserId().then(setMe);
+  }, []);
+
+  async function assign(q: CaseQuestion, assignee: string | null, due?: string | null) {
+    setItems((prev) =>
+      prev
+        ? prev.map((i) =>
+            i.id === q.id
+              ? { ...i, assignee_id: assignee, ...(due !== undefined ? { due_date: due } : {}) }
+              : i
+          )
+        : prev
+    );
+    const { error: err } = await assignQuestion(q.id, assignee, due);
+    if (err) setError(err.message);
+    load();
+  }
+
+  const nameOf = (id: string | null) => team.find((m) => m.id === id)?.name ?? "someone";
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabase
@@ -39,7 +72,6 @@ export default function OpenQuestions({
   }, [caseId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
     load();
   }, [load]);
 
@@ -49,7 +81,12 @@ export default function OpenQuestions({
     setAdding(true);
     const { error: err } = await supabase
       .from("case_questions")
-      .insert({ case_id: caseId, question, priority: blocking ? "blocking" : "normal" });
+      .insert({
+        case_id: caseId,
+        question,
+        priority: blocking ? "blocking" : "normal",
+        assignee_id: newAssignee,
+      });
     setAdding(false);
     if (err) {
       setError(err.message);
@@ -57,6 +94,7 @@ export default function OpenQuestions({
     }
     setText("");
     setBlocking(false);
+    setNewAssignee(null);
     load();
   }
 
@@ -155,6 +193,10 @@ export default function OpenQuestions({
           />
           Blocking (the deal can&apos;t move forward without an answer)
         </label>
+        <label className="flex items-center gap-2 text-xs text-slate-500">
+          Assign to
+          <AssigneeSelect team={team} value={newAssignee} onChange={setNewAssignee} />
+        </label>
       </div>
 
       {open.length > 0 && (
@@ -201,6 +243,44 @@ export default function OpenQuestions({
                 {q.source && <> · Source: {q.source}</>}
                 {!q.ref && <> · Will be added to the deal file at the next sync</>}
               </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                {q.assignee_id === null ? (
+                  <>
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700">
+                      Unassigned
+                    </span>
+                    {me && (
+                      <button
+                        onClick={() => assign(q, me)}
+                        className="font-medium text-slate-700 hover:text-slate-900"
+                      >
+                        Take
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <span>
+                    {q.assignee_id === me ? "You" : nameOf(q.assignee_id)}
+                  </span>
+                )}
+                <AssigneeSelect
+                  team={team}
+                  value={q.assignee_id}
+                  onChange={(id) => assign(q, id, id ? q.due_date : null)}
+                  emptyLabel="Unassigned"
+                />
+                {q.assignee_id && (
+                  <input
+                    type="date"
+                    aria-label="Due date"
+                    value={q.due_date ?? ""}
+                    onChange={(e) => assign(q, q.assignee_id, e.target.value || null)}
+                    className={`rounded-md border border-slate-200 bg-white px-2 py-1 text-xs ${
+                      isOverdue(q.due_date) ? "text-red-600" : "text-slate-700"
+                    }`}
+                  />
+                )}
+              </div>
               {answeringId === q.id ? (
                 <div className="mt-3 space-y-2">
                   <textarea

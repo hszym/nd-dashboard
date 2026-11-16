@@ -339,6 +339,7 @@ export default function DealPager({
             html: caseData.intro_email_html,
           }}
           onUpdate={onUpdateDocument}
+          onAssigned={onReload}
         />
       </Sheet>
 

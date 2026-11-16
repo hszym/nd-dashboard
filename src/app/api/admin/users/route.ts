@@ -22,7 +22,7 @@ export async function GET() {
   const [{ data: userList, error: listError }, { data: profiles, error: profilesError }] =
     await Promise.all([
       adminClient.auth.admin.listUsers({ perPage: 200 }),
-      adminClient.from("profiles").select("id, role"),
+      adminClient.from("profiles").select("id, role, display_name"),
     ]);
 
   if (listError || profilesError) {
@@ -33,10 +33,12 @@ export async function GET() {
   }
 
   const roleById = new Map((profiles ?? []).map((p) => [p.id, p.role]));
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name as string | null]));
   const rows: AdminUserRow[] = userList.users
     .map((u) => ({
       id: u.id,
       email: u.email ?? null,
+      display_name: nameById.get(u.id) ?? null,
       role: isValidRole(roleById.get(u.id)) ? (roleById.get(u.id) as "admin" | "team") : "team",
       created_at: u.created_at,
     }))

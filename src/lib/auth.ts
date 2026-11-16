@@ -5,6 +5,8 @@ export type Role = "admin" | "team";
 export interface AdminUserRow {
   id: string;
   email: string | null;
+  /** Name shown when a task is assigned (profiles.display_name). */
+  display_name: string | null;
   role: Role;
   created_at: string;
 }

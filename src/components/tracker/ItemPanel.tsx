@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Sheet from "@/components/Sheet";
 import { formatDate } from "@/lib/utils";
+import { TeamMember, loadTeam } from "@/lib/tasks";
 import { Item, TrackerData, TrackerEvent, loadEvents, saveItem } from "@/lib/tracker";
 
 const field = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none";
@@ -25,6 +26,11 @@ export default function ItemPanel({
   const [events, setEvents] = useState<TrackerEvent[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    loadTeam().then(setTeam);
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the form when another item opens
@@ -101,6 +107,17 @@ export default function ItemPanel({
             <label className={label}>Responsibility</label>
             <input className={field} value={draft.responsible ?? ""} onChange={(e) => set("responsible", e.target.value || null)} />
           </div>
+          <div className="col-span-2">
+            <label className={label}>Assigned to (counts in their tasks)</label>
+            <select
+              className={field}
+              value={draft.assignee_id ?? ""}
+              onChange={(e) => set("assignee_id", e.target.value || null)}
+            >
+              <option value="">Nobody</option>
+              {team.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
           <div>
             <label className={label}>Pending with</label>
             <input className={field} value={draft.pending_with ?? ""} onChange={(e) => set("pending_with", e.target.value || null)} />
@@ -160,6 +177,7 @@ export default function ItemPanel({
                     const show = (v: unknown) =>
                       k === "status_id" ? names(v as string, data.statuses)
                       : k === "topic_id" ? names(v as string, data.topics)
+                      : k === "assignee_id" ? (team.find((m) => m.id === v)?.name ?? "—")
                       : String(v ?? "—");
                     return `${k.replace(/_/g, " ")}: ${show(c.from)} → ${show(c.to)}`;
                   }).join("; ")}

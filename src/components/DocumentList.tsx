@@ -13,6 +13,14 @@ import {
 } from "@/lib/supabase";
 import IntroEmailCard from "@/components/IntroEmailPanel";
 import type { IntroEmailTemplate } from "@/lib/intro-email";
+import AssigneeSelect from "@/components/AssigneeSelect";
+import {
+  TeamMember,
+  assignDocument,
+  currentUserId,
+  isOverdue,
+  loadTeam,
+} from "@/lib/tasks";
 
 const SVG_PROPS = {
   viewBox: "0 0 24 24",
@@ -49,7 +57,10 @@ export default function DocumentList({
   folderUrl,
   introEmail,
   onUpdate,
+  onAssigned,
 }: {
+  /** Called after a document was assigned, so the page reloads the (possibly new) row. */
+  onAssigned: () => void;
   caseId: string;
   caseName: string;
   documents: CaseDocument[];
@@ -64,9 +75,30 @@ export default function DocumentList({
   ) => void;
 }) {
   const [openType, setOpenType] = useState<string | null>(null);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [me, setMe] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadTeam().then(setTeam);
+    currentUserId().then(setMe);
+  }, []);
+
+  async function assign(doc: CaseDocument, assignee: string | null, due: string | null) {
+    setAssignError(null);
+    const { error } = await assignDocument(caseId, doc.type, assignee, due);
+    if (error) {
+      setAssignError(error.message);
+      return;
+    }
+    onAssigned();
+  }
 
   const isReady = (d: CaseDocument) => isDocumentReady(d, documents);
-  const shown = editable ? documents : documents.filter(isReady);
+  // Members see what is ready, plus what is waiting for them to provide.
+  const shown = editable
+    ? documents
+    : documents.filter((d) => isReady(d) || (me !== null && d.assignee_id === me));
   const ready = documents.filter(isReady).length;
   const attachments = emailAttachments(documents);
 
@@ -101,6 +133,10 @@ export default function DocumentList({
           />
         </div>
       </div>
+
+      {assignError && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{assignError}</p>
+      )}
 
       <ul className="space-y-2">
         {shown.map((doc) => {
@@ -251,6 +287,28 @@ export default function DocumentList({
                   </button>
                 )}
               </div>
+
+              {!isReady(doc) && (
+                <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
+                  To provide
+                  <AssigneeSelect
+                    team={team}
+                    value={doc.assignee_id}
+                    onChange={(id) => assign(doc, id, id ? (doc.due_date ?? null) : null)}
+                  />
+                  {doc.assignee_id && (
+                    <input
+                      type="date"
+                      aria-label="Due date"
+                      value={doc.due_date ?? ""}
+                      onChange={(e) => assign(doc, doc.assignee_id ?? null, e.target.value || null)}
+                      className={`rounded-md border border-slate-200 bg-white px-2 py-1 text-xs ${
+                        isOverdue(doc.due_date ?? null) ? "text-red-600" : "text-slate-700"
+                      }`}
+                    />
+                  )}
+                </div>
+              )}
 
               {expanded && (
                 <div className="space-y-4 border-t border-slate-100 p-3">

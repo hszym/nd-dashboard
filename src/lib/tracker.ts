@@ -13,6 +13,8 @@ export interface Item {
   priority: "High" | "Medium" | "Low" | null;
   urgency: number | null;
   responsible: string | null;
+  /** Account of the person it is assigned to (counts in their tasks); `responsible` stays free text. */
+  assignee_id: string | null;
   last_feedback: string | null;
   feedback_result: string | null;
   pending_with: string | null;
@@ -60,7 +62,7 @@ export async function loadWorkspace(workspaceId: string): Promise<TrackerData> {
 }
 
 const EDITABLE: (keyof Item)[] = [
-  "topic_id", "status_id", "details", "priority", "urgency", "responsible", "last_feedback",
+  "topic_id", "status_id", "details", "priority", "urgency", "responsible", "assignee_id", "last_feedback",
   "feedback_result", "pending_with", "start_date", "due_date", "flag",
 ];
 

@@ -5,12 +5,28 @@ import type { Case } from "@/lib/supabase";
 import ProjectCard from "./ProjectCard";
 import NewDealCard from "./NewDealCard";
 
+/** Red notification dot, top right of a deal: hidden at 0, "9+" beyond nine. */
+function TaskBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-label={`${count} open ${count === 1 ? "task" : "tasks"} for you`}
+      className="pointer-events-none absolute -right-1.5 -top-1.5 z-10 flex h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-1.5 text-[13px] font-semibold leading-none text-white shadow-[0_4px_10px_-2px_rgba(239,68,68,0.6)] ring-2 ring-white"
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
 export default function ProjectCarousel({
   projects,
   showAddCard,
   active,
   onActiveChange,
+  taskCounts = {},
 }: {
+  /** Open tasks of the signed-in person per deal (case id); drives the red badge. */
+  taskCounts?: Record<string, number>;
   projects: Case[];
   /** Adds a final "Add a new deal" slide (admins only). */
   showAddCard: boolean;
@@ -90,13 +106,15 @@ export default function ProjectCarousel({
             ref={(el) => {
               slideRefs.current[i] = el;
             }}
-            className={slideClass(i)}
+            className={`relative ${slideClass(i)}`}
           >
             <ProjectCard
               project={p}
               active={i === active}
               onSelect={() => scrollTo(i)}
             />
+            {/* Outside the card (which clips its content) so it can overhang the corner. */}
+            <TaskBadge count={taskCounts[p.id] ?? 0} />
           </div>
         ))}
         {showAddCard && (

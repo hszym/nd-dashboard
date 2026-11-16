@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase, Case } from "@/lib/supabase";
 import { useRole } from "@/lib/useRole";
+import { currentUserId, loadTaskCounts } from "@/lib/tasks";
 import AmbientBackground from "@/components/AmbientBackground";
 import ProjectCarousel from "@/components/ProjectCarousel";
 
@@ -11,6 +12,17 @@ export default function HomePage() {
   const [cases, setCases] = useState<Case[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(0);
+  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let live = true;
+    currentUserId().then((id) => {
+      if (id) loadTaskCounts(id).then((c) => live && setTaskCounts(c));
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +70,7 @@ export default function HomePage() {
             showAddCard={role === "admin"}
             active={active}
             onActiveChange={setActive}
+            taskCounts={taskCounts}
           />
           {current && (
             <p className="mt-5 text-center text-sm text-slate-500">

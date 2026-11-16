@@ -22,10 +22,6 @@ export async function PATCH(
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
-  const role = body?.role;
-  if (!isValidRole(role)) {
-    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
-  }
 
   let adminClient;
   try {
@@ -35,6 +31,22 @@ export async function PATCH(
       { error: err instanceof Error ? err.message : "Not configured" },
       { status: 500 }
     );
+  }
+
+  // Changing the display name (allowed for oneself too).
+  if (typeof body?.display_name === "string") {
+    const name = body.display_name.trim();
+    if (!name || name.length > 80) {
+      return NextResponse.json({ error: "The name must be 1 to 80 characters." }, { status: 400 });
+    }
+    const { error } = await adminClient.from("profiles").update({ display_name: name }).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  const role = body?.role;
+  if (!isValidRole(role)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
   if (id === caller.user.id) {
