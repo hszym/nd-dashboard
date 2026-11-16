@@ -14,9 +14,9 @@ const DEFAULT_STATUSES = [
 ];
 
 /**
- * Third page of a deal: that deal's own tracker (tracker_projects.case_id = this deal).
- * A deal never shows another deal's or workspace's to-dos. Admins can start an empty
- * tracker for a deal that has none.
+ * Third page of a deal: that deal's own tracker, made of its sub-projects
+ * (tracker_projects.case_id = this deal). A deal never shows another deal's to-dos.
+ * Admins can start an empty tracker for a deal that has none.
  */
 export default function CaseTracker({
   caseId,
@@ -86,6 +86,6 @@ export default function CaseTracker({
   }
 
   return (
-    <TrackerApp key={linked.id} fixedWorkspaceId={linked.workspace_id} fixedProjectId={linked.id} />
+    <TrackerApp key={caseId} workspaceId={linked.workspace_id} caseId={caseId} />
   );
 }

@@ -38,14 +38,10 @@ export interface TrackerData {
   items: Item[];
 }
 
-export async function loadWorkspaces(): Promise<Workspace[]> {
-  const { data } = await supabase.from("tracker_workspaces").select("id,name").order("created_at");
-  return data ?? [];
-}
-
-export async function loadWorkspace(workspaceId: string): Promise<TrackerData> {
+/** A deal's tracker: its sub-projects (tracker_projects.case_id = the deal) and their to-dos. */
+export async function loadWorkspace(workspaceId: string, caseId: string): Promise<TrackerData> {
   const [projects, topics, statuses] = await Promise.all([
-    supabase.from("tracker_projects").select("id,name,sort").eq("workspace_id", workspaceId).order("sort"),
+    supabase.from("tracker_projects").select("id,name,sort").eq("workspace_id", workspaceId).eq("case_id", caseId).order("sort"),
     supabase.from("tracker_topics").select("id,name,color,sort").eq("workspace_id", workspaceId).order("sort"),
     supabase.from("tracker_statuses").select("id,name,color,sort,is_done,is_active").eq("workspace_id", workspaceId).order("sort"),
   ]);
@@ -88,6 +84,21 @@ export async function createItem(projectId: string, details: string, statusId: s
   if (error || !data) return null;
   await supabase.from("tracker_events").insert({ item_id: data.id, source: "manual", changes: {}, note: "Created" });
   return data as Item;
+}
+
+/** Adds a sub-project to a deal's tracker. */
+export async function createProject(
+  workspaceId: string,
+  caseId: string,
+  name: string,
+  sort: number
+): Promise<Project | null> {
+  const { data, error } = await supabase
+    .from("tracker_projects")
+    .insert({ workspace_id: workspaceId, case_id: caseId, name, sort })
+    .select("id,name,sort")
+    .single();
+  return error || !data ? null : (data as Project);
 }
 
 export async function loadEvents(itemId: string): Promise<TrackerEvent[]> {

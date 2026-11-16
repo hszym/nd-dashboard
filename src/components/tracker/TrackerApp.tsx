@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDate, daysUntil } from "@/lib/utils";
 import {
-  Item, TrackerData, Workspace, createItem, isOverdue, loadWorkspace, loadWorkspaces, saveItem,
+  Item, TrackerData, createItem, createProject, isOverdue, loadWorkspace, saveItem,
 } from "@/lib/tracker";
 import ItemPanel from "./ItemPanel";
-import ImportForm from "./ImportForm";
 
 type View = "table" | "kanban" | "week";
 
@@ -14,44 +13,30 @@ const chip = "rounded-full px-2.5 py-0.5 text-[11px] font-medium";
 const input = "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none";
 
 /**
- * The tracker UI. With `fixedWorkspaceId` + `fixedProjectId` it is locked to one
- * project (used on a deal page); without them it shows every workspace and project.
+ * A deal's tracker. The deal's to-dos are grouped in sub-projects (a deal with a single
+ * one just looks like a flat list); anyone can add a sub-project.
  */
 export default function TrackerApp({
-  fixedWorkspaceId,
-  fixedProjectId,
+  workspaceId,
+  caseId,
 }: {
-  fixedWorkspaceId?: string;
-  fixedProjectId?: string;
-} = {}) {
-  const fixed = !!fixedWorkspaceId && !!fixedProjectId;
-  const [workspaces, setWorkspaces] = useState<Workspace[] | null>(
-    fixed ? [{ id: fixedWorkspaceId!, name: "" }] : null
-  );
-  const [workspaceId, setWorkspaceId] = useState<string | null>(fixedWorkspaceId ?? null);
+  workspaceId: string;
+  caseId: string;
+}) {
   const [data, setData] = useState<TrackerData | null>(null);
   const [view, setView] = useState<View>("table");
-  const [project, setProject] = useState(fixedProjectId ?? "");
+  const [project, setProject] = useState("");
   const [status, setStatus] = useState("");
   const [responsible, setResponsible] = useState("");
   const [query, setQuery] = useState("");
   const [openItem, setOpenItem] = useState<Item | null>(null);
   const [newText, setNewText] = useState("");
+  const [addingProject, setAddingProject] = useState(false);
+  const [projectName, setProjectName] = useState("");
 
   useEffect(() => {
-    if (fixed) return;
-    loadWorkspaces().then((w) => {
-      setWorkspaces(w);
-      setWorkspaceId((cur) => cur ?? w[0]?.id ?? null);
-    });
-  }, [fixed]);
-
-  useEffect(() => {
-    if (!workspaceId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reload when the workspace changes
-    setData(null);
-    loadWorkspace(workspaceId).then(setData);
-  }, [workspaceId]);
+    loadWorkspace(workspaceId, caseId).then(setData);
+  }, [workspaceId, caseId]);
 
   const replaceItem = useCallback((it: Item) => {
     setData((d) => (d ? { ...d, items: d.items.map((x) => (x.id === it.id ? it : x)) } : d));
@@ -69,15 +54,22 @@ export default function TrackerApp({
     );
   }, [data, project, status, responsible, query]);
 
-  if (workspaces && workspaces.length === 0) {
-    return (
-      <div className="space-y-3">
-        <p className="text-sm text-slate-500">No tracker yet. An admin can import a workbook below.</p>
-        <ImportForm onDone={() => loadWorkspaces().then((w) => { setWorkspaces(w); setWorkspaceId(w[0]?.id ?? null); })} />
-      </div>
-    );
+  if (!data) return <p className="text-sm text-slate-500">Loading…</p>;
+
+  // Sub-project names only matter once the deal has more than one.
+  const multi = data.projects.length > 1;
+
+  async function addProject(e: React.FormEvent) {
+    e.preventDefault();
+    const name = projectName.trim();
+    if (!name || !data) return;
+    const created = await createProject(workspaceId, caseId, name, data.projects.length);
+    if (!created) return;
+    setData({ ...data, projects: [...data.projects, created] });
+    setProject(created.id);
+    setProjectName("");
+    setAddingProject(false);
   }
-  if (!data || !workspaces) return <p className="text-sm text-slate-500">Loading…</p>;
 
   const statusOf = (id: string | null) => data.statuses.find((s) => s.id === id);
   const projectOf = (id: string) => data.projects.find((p) => p.id === id)?.name ?? "";
@@ -145,15 +137,6 @@ export default function TrackerApp({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {!fixed && <h1 className="text-xl font-semibold tracking-tight text-slate-900">Tracker</h1>}
-          {!fixed && workspaces.length > 1 && (
-            <select className={input} value={workspaceId ?? ""} onChange={(e) => { setWorkspaceId(e.target.value); setProject(""); }}>
-              {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          )}
-          {!fixed && workspaces.length === 1 && <span className="text-sm text-slate-500">{workspaces[0].name}</span>}
-        </div>
         <div className="flex gap-1 rounded-full bg-slate-100 p-1 text-sm">
           {([["table", "Table"], ["kanban", "Board"], ["week", "This week"]] as const).map(([v, l]) => (
             <button key={v} onClick={() => setView(v)} className={`rounded-full px-3 py-1 ${view === v ? "bg-white font-medium shadow-sm" : "text-slate-500"}`}>{l}</button>
@@ -161,12 +144,23 @@ export default function TrackerApp({
         </div>
       </div>
 
-      {/* Project cards double as the overview and as a quick filter. */}
-      <div className={`flex gap-2 overflow-x-auto pb-1 ${fixed ? "hidden" : ""}`}>
-        <button onClick={() => setProject("")} className={`${chip} whitespace-nowrap border ${!project ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}>All projects</button>
-        {data.projects.map((p) => (
+      {/* Sub-projects double as the overview and as a quick filter. */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {multi && (
+          <button onClick={() => setProject("")} className={`${chip} whitespace-nowrap border ${!project ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}>All sub-projects</button>
+        )}
+        {multi && data.projects.map((p) => (
           <button key={p.id} onClick={() => setProject(p.id)} className={`${chip} whitespace-nowrap border ${project === p.id ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}>{p.name}</button>
         ))}
+        {addingProject ? (
+          <form onSubmit={addProject} className="flex shrink-0 items-center gap-1.5">
+            <input autoFocus className={`${input} w-44 py-1`} placeholder="Sub-project name" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
+            <button className={`${chip} bg-slate-900 text-white`}>Add</button>
+            <button type="button" onClick={() => setAddingProject(false)} className="text-xs text-slate-400 hover:text-slate-900">Cancel</button>
+          </form>
+        ) : (
+          <button onClick={() => setAddingProject(true)} className={`${chip} shrink-0 whitespace-nowrap border border-dashed border-slate-300 text-slate-500 hover:text-slate-900`}>+ Sub-project</button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -207,7 +201,7 @@ export default function TrackerApp({
               <p className="text-slate-800">{i.details}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
                 <Dot id={i.status_id} />
-                {!fixed && <span>{projectOf(i.project_id)}</span>}
+                {multi && <span>{projectOf(i.project_id)}</span>}
                 {topicOf(i.topic_id) && <span>{topicOf(i.topic_id)}</span>}
                 {i.priority && <span>{i.priority}</span>}
                 {i.responsible && <span>{i.responsible}</span>}
@@ -221,15 +215,15 @@ export default function TrackerApp({
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
               <tr>
-                {["Project", "Topic", "Details", "Status", "Priority", "Urg.", "Responsibility", "Due"]
-                  .filter((h) => !(fixed && h === "Project"))
+                {["Sub-project", "Topic", "Details", "Status", "Priority", "Urg.", "Responsibility", "Due"]
+                  .filter((h) => multi || h !== "Sub-project")
                   .map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {filtered.map((i) => (
                 <tr key={i.id} onClick={() => setOpenItem(i)} className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${rowTone(i)}`}>
-                  {!fixed && <td className="whitespace-nowrap px-3 py-2">{projectOf(i.project_id)}</td>}
+                  {multi && <td className="whitespace-nowrap px-3 py-2">{projectOf(i.project_id)}</td>}
                   <td className="px-3 py-2">{topicOf(i.topic_id)}</td>
                   <td className="min-w-[16rem] px-3 py-2">{i.details}</td>
                   <td className="px-3 py-2"><Dot id={i.status_id} /></td>
@@ -239,7 +233,7 @@ export default function TrackerApp({
                   <td className="whitespace-nowrap px-3 py-2"><DueCell i={i} /></td>
                 </tr>
               ))}
-              {!filtered.length && <tr><td colSpan={fixed ? 7 : 8} className="px-3 py-6 text-center text-slate-400">No to-dos match.</td></tr>}
+              {!filtered.length && <tr><td colSpan={multi ? 8 : 7} className="px-3 py-6 text-center text-slate-400">No to-dos match.</td></tr>}
             </tbody>
           </table>
         </div>
