@@ -86,6 +86,11 @@ export default function CaseTracker({
   }
 
   return (
-    <TrackerApp key={caseId} workspaceId={linked.workspace_id} caseId={caseId} />
+    <TrackerApp
+      key={caseId}
+      workspaceId={linked.workspace_id}
+      caseId={caseId}
+      openItemId={typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("item")}
+    />
   );
 }

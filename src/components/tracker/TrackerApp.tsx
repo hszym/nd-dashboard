@@ -5,6 +5,7 @@ import { formatDate, daysUntil } from "@/lib/utils";
 import {
   Item, TrackerData, createItem, createProject, isOverdue, loadWorkspace, saveItem,
 } from "@/lib/tracker";
+import { currentUserId } from "@/lib/tasks";
 import ItemPanel from "./ItemPanel";
 
 type View = "table" | "kanban" | "week";
@@ -19,10 +20,15 @@ const input = "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm t
 export default function TrackerApp({
   workspaceId,
   caseId,
+  openItemId = null,
 }: {
   workspaceId: string;
   caseId: string;
+  /** To-do to open as soon as the tracker has loaded (link from "My tasks"). */
+  openItemId?: string | null;
 }) {
+  const [me, setMe] = useState<string | null>(null);
+  const [mineOnly, setMineOnly] = useState(false);
   const [data, setData] = useState<TrackerData | null>(null);
   const [view, setView] = useState<View>("table");
   const [project, setProject] = useState("");
@@ -35,8 +41,16 @@ export default function TrackerApp({
   const [projectName, setProjectName] = useState("");
 
   useEffect(() => {
-    loadWorkspace(workspaceId, caseId).then(setData);
-  }, [workspaceId, caseId]);
+    currentUserId().then(setMe);
+  }, []);
+
+  useEffect(() => {
+    loadWorkspace(workspaceId, caseId).then((d) => {
+      setData(d);
+      const target = openItemId ? d.items.find((i) => i.id === openItemId) : null;
+      if (target) setOpenItem(target);
+    });
+  }, [workspaceId, caseId, openItemId]);
 
   const replaceItem = useCallback((it: Item) => {
     setData((d) => (d ? { ...d, items: d.items.map((x) => (x.id === it.id ? it : x)) } : d));
@@ -50,9 +64,10 @@ export default function TrackerApp({
         (!project || i.project_id === project) &&
         (!status || i.status_id === status) &&
         (!responsible || (i.responsible ?? "").includes(responsible)) &&
+        (!mineOnly || (me !== null && i.assignee_ids.includes(me))) &&
         (!q || `${i.details} ${i.last_feedback ?? ""} ${i.pending_with ?? ""}`.toLowerCase().includes(q))
     );
-  }, [data, project, status, responsible, query]);
+  }, [data, project, status, responsible, query, mineOnly, me]);
 
   if (!data) return <p className="text-sm text-slate-500">Loading…</p>;
 
@@ -182,6 +197,14 @@ export default function TrackerApp({
           <option value="">Everyone</option>
           {people.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
+        <button
+          type="button"
+          aria-pressed={mineOnly}
+          onClick={() => setMineOnly((v) => !v)}
+          className={`${chip} border py-1.5 ${mineOnly ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}
+        >
+          Mine
+        </button>
         <form onSubmit={addItem} className="flex w-full gap-2 sm:ml-auto sm:w-auto">
           <input className={`${input} min-w-0 flex-1 sm:w-64 sm:flex-none`} placeholder="Quick add a to-do…" value={newText} onChange={(e) => setNewText(e.target.value)} />
           <button className="rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700">Add</button>

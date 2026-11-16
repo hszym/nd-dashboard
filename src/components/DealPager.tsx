@@ -86,9 +86,10 @@ export default function DealPager({
   // Deep link: the Add LP flow redirects to ?tab=track, which is page 2.
   useEffect(() => {
     const track = trackRef.current;
-    if (track && new URLSearchParams(window.location.search).get("tab") === "track") {
-      track.scrollLeft = track.clientWidth;
-    }
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (track && tab === "track") track.scrollLeft = track.clientWidth;
+    // ?tab=tracker (from "My tasks") lands on the third page, the deal's tracker.
+    if (track && tab === "tracker") track.scrollLeft = 2 * track.clientWidth;
   }, []);
 
   // Re-clip the inactive pages only once the swipe has settled (no scroll events

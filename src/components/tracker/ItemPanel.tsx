@@ -9,6 +9,8 @@ import { Item, TrackerData, TrackerEvent, loadEvents, saveItem } from "@/lib/tra
 const field = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none";
 const label = "mb-1 block text-xs font-medium text-slate-500";
 
+const splitNames = (s: string) => s.split("/").map((n) => n.trim()).filter(Boolean);
+
 /** Side sheet to edit one to-do; every save is logged in the item's history. */
 export default function ItemPanel({
   item,
@@ -28,9 +30,18 @@ export default function ItemPanel({
   const [error, setError] = useState<string | null>(null);
   const [team, setTeam] = useState<TeamMember[]>([]);
 
+  const [extText, setExtText] = useState("");
+
   useEffect(() => {
     loadTeam().then(setTeam);
   }, []);
+
+  // The "no account" box starts with the names on the to-do that match nobody on the team.
+  useEffect(() => {
+    const known = new Set(team.map((m) => m.name.toLowerCase()));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the box when another item opens or the team arrives
+    setExtText(splitNames(item?.responsible ?? "").filter((n) => !known.has(n.toLowerCase())).join(" / "));
+  }, [item, team]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the form when another item opens
@@ -65,6 +76,13 @@ export default function ItemPanel({
   }
 
   const names = (id: string | null, list: { id: string; name: string }[]) => list.find((x) => x.id === id)?.name ?? "—";
+
+  // `responsible` is the readable list of everyone on the to-do: accounts first, then outsiders.
+  const external = splitNames(extText);
+  function setAssignees(ids: string[], outsiders: string[]) {
+    const accounts = ids.map((id) => team.find((m) => m.id === id)?.name).filter(Boolean) as string[];
+    setDraft({ ...draft!, assignee_ids: ids, responsible: [...accounts, ...outsiders].join(" / ") || null });
+  }
 
   return (
     <Sheet open onClose={onClose} title="To-do">
@@ -103,20 +121,36 @@ export default function ItemPanel({
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <div>
-            <label className={label}>Responsibility</label>
-            <input className={field} value={draft.responsible ?? ""} onChange={(e) => set("responsible", e.target.value || null)} />
+          <div className="col-span-2">
+            <label className={label}>Assigned to (the to-do counts in each person&apos;s tasks)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {team.map((m) => {
+                const on = draft.assignee_ids.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setAssignees(on ? draft.assignee_ids.filter((x) => x !== m.id) : [...draft.assignee_ids, m.id], external)}
+                    className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"}`}
+                  >
+                    {m.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="col-span-2">
-            <label className={label}>Assigned to (counts in their tasks)</label>
-            <select
+            <label className={label}>Someone without an account (optional)</label>
+            <input
               className={field}
-              value={draft.assignee_id ?? ""}
-              onChange={(e) => set("assignee_id", e.target.value || null)}
-            >
-              <option value="">Nobody</option>
-              {team.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
+              placeholder="e.g. Murat Ay"
+              value={extText}
+              onChange={(e) => {
+                setExtText(e.target.value);
+                setAssignees(draft.assignee_ids, splitNames(e.target.value));
+              }}
+            />
           </div>
           <div>
             <label className={label}>Pending with</label>
@@ -177,7 +211,7 @@ export default function ItemPanel({
                     const show = (v: unknown) =>
                       k === "status_id" ? names(v as string, data.statuses)
                       : k === "topic_id" ? names(v as string, data.topics)
-                      : k === "assignee_id" ? (team.find((m) => m.id === v)?.name ?? "—")
+                      : k === "assignee_ids" ? ((v as string[]).map((id) => team.find((m) => m.id === id)?.name ?? "?").join(", ") || "nobody")
                       : String(v ?? "—");
                     return `${k.replace(/_/g, " ")}: ${show(c.from)} → ${show(c.to)}`;
                   }).join("; ")}

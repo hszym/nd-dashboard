@@ -13,8 +13,8 @@ export interface Item {
   priority: "High" | "Medium" | "Low" | null;
   urgency: number | null;
   responsible: string | null;
-  /** Account of the person it is assigned to (counts in their tasks); `responsible` stays free text. */
-  assignee_id: string | null;
+  /** Accounts it is assigned to (it counts in each one's tasks); `responsible` keeps the names as text, plus any external person. */
+  assignee_ids: string[];
   last_feedback: string | null;
   feedback_result: string | null;
   pending_with: string | null;
@@ -47,32 +47,64 @@ export async function loadWorkspace(workspaceId: string, caseId: string): Promis
   ]);
   const projectIds = (projects.data ?? []).map((p) => p.id);
   const items = projectIds.length
-    ? await supabase.from("tracker_items").select("*").in("project_id", projectIds).order("sort").limit(5000)
-    : { data: [] as Item[] };
+    ? await supabase.from("tracker_items").select(ITEM_SELECT).in("project_id", projectIds).order("sort").limit(5000)
+    : { data: [] };
   return {
     projects: projects.data ?? [],
     topics: topics.data ?? [],
     statuses: statuses.data ?? [],
-    items: (items.data ?? []) as Item[],
+    items: (items.data ?? []).map(toItem),
   };
 }
 
-const EDITABLE: (keyof Item)[] = [
-  "topic_id", "status_id", "details", "priority", "urgency", "responsible", "assignee_id", "last_feedback",
+/** Item columns plus the accounts it is assigned to (one row per person in tracker_item_assignees). */
+const ITEM_SELECT = "*, tracker_item_assignees(user_id)";
+
+function toItem(row: unknown): Item {
+  const { tracker_item_assignees, ...rest } = row as Record<string, unknown> & {
+    tracker_item_assignees?: { user_id: string }[];
+  };
+  return { ...rest, assignee_ids: (tracker_item_assignees ?? []).map((a) => a.user_id) } as Item;
+}
+
+const EDITABLE: (keyof Omit<Item, "assignee_ids">)[] = [
+  "topic_id", "status_id", "details", "priority", "urgency", "responsible", "last_feedback",
   "feedback_result", "pending_with", "start_date", "due_date", "flag",
 ];
 
-/** Saves a patch on an item and logs what changed in tracker_events. */
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+
+/** Saves a patch on an item (including who it is assigned to) and logs what changed in tracker_events. */
 export async function saveItem(before: Item, patch: Partial<Item>, note?: string): Promise<Item | null> {
+  const { assignee_ids: nextIds, ...columns } = patch;
   const changes: TrackerEvent["changes"] = {};
   for (const k of EDITABLE) {
-    if (k in patch && patch[k] !== before[k]) changes[k] = { from: before[k], to: patch[k] };
+    if (k in columns && columns[k] !== before[k]) changes[k] = { from: before[k], to: columns[k] };
   }
+  const assigneesChanged = nextIds !== undefined && !sameIds(nextIds, before.assignee_ids);
+  if (assigneesChanged) changes.assignee_ids = { from: before.assignee_ids, to: nextIds };
   if (!Object.keys(changes).length && !note) return before;
-  const { data, error } = await supabase.from("tracker_items").update(patch).eq("id", before.id).select("*").single();
+
+  const { data, error } = await supabase.from("tracker_items").update(columns).eq("id", before.id).select("*").single();
   if (error || !data) return null;
+  if (assigneesChanged && !(await setAssignees(before.id, nextIds!, before.assignee_ids))) return null;
   await supabase.from("tracker_events").insert({ item_id: before.id, source: "manual", changes, note: note ?? null });
-  return data as Item;
+  return toItem({ ...data, tracker_item_assignees: (assigneesChanged ? nextIds! : before.assignee_ids).map((user_id) => ({ user_id })) });
+}
+
+/** Replaces the set of accounts a to-do is assigned to. */
+export async function setAssignees(itemId: string, userIds: string[], current: string[]): Promise<boolean> {
+  const remove = current.filter((id) => !userIds.includes(id));
+  const add = userIds.filter((id) => !current.includes(id));
+  if (remove.length) {
+    const { error } = await supabase.from("tracker_item_assignees").delete().eq("item_id", itemId).in("user_id", remove);
+    if (error) return false;
+  }
+  if (add.length) {
+    const { error } = await supabase.from("tracker_item_assignees").insert(add.map((user_id) => ({ item_id: itemId, user_id })));
+    if (error) return false;
+  }
+  return true;
 }
 
 export async function createItem(projectId: string, details: string, statusId: string | null): Promise<Item | null> {
@@ -83,7 +115,7 @@ export async function createItem(projectId: string, details: string, statusId: s
     .single();
   if (error || !data) return null;
   await supabase.from("tracker_events").insert({ item_id: data.id, source: "manual", changes: {}, note: "Created" });
-  return data as Item;
+  return toItem(data);
 }
 
 /** Adds a sub-project to a deal's tracker. */

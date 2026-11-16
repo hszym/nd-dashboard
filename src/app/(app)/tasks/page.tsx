@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -62,7 +62,7 @@ export default function TasksPage() {
     load();
   }
 
-  if (!mine) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (!mine) return <p className="text-sm text-slate-500">Loadingâ€¦</p>;
 
   const groups = groupByDeal(mine, deals);
   const toTakeGroups = groupByDeal(toTake, deals);
@@ -85,7 +85,7 @@ export default function TasksPage() {
           <DealTitle deal={g.deal} count={g.tasks.length} />
           <ul className="space-y-2">
             {g.tasks.map((t) => (
-              <TaskRow key={`${t.kind}-${t.id}`} task={t} />
+              <TaskRow key={`${t.kind}-${t.id}`} task={t} slug={g.deal?.slug} />
             ))}
           </ul>
         </section>
@@ -104,7 +104,7 @@ export default function TasksPage() {
               <DealTitle deal={g.deal} count={g.tasks.length} />
               <ul className="space-y-2">
                 {g.tasks.map((t) => (
-                  <TaskRow key={t.id} task={t} onTake={() => take(t)} />
+                  <TaskRow key={t.id} task={t} slug={g.deal?.slug} onTake={() => take(t)} />
                 ))}
               </ul>
             </section>
@@ -142,10 +142,16 @@ function DealTitle({ deal, count }: { deal: DealRef | null; count: number }) {
   );
 }
 
-function TaskRow({ task, onTake }: { task: Task; onTake?: () => void }) {
+function TaskRow({ task, slug, onTake }: { task: Task; slug?: string; onTake?: () => void }) {
   const late = isOverdue(task.due_date);
-  return (
-    <li className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+  // A to-do opens right on its card in the deal's tracker; the rest open the deal.
+  const href = slug
+    ? task.kind === "todo"
+      ? `/cases/${slug}?tab=tracker&item=${task.id}`
+      : `/cases/${slug}`
+    : null;
+  const body = (
+    <>
       <span
         className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${KIND_STYLE[task.kind]}`}
       >
@@ -167,10 +173,22 @@ function TaskRow({ task, onTake }: { task: Task; onTake?: () => void }) {
           )}
         </p>
       </div>
+    </>
+  );
+  const rowClass = "flex min-w-0 flex-1 items-start gap-3 rounded-2xl p-3";
+  return (
+    <li className="flex items-center rounded-2xl border border-slate-200 bg-white">
+      {href ? (
+        <Link href={href} className={`${rowClass} hover:bg-slate-50`}>
+          {body}
+        </Link>
+      ) : (
+        <div className={rowClass}>{body}</div>
+      )}
       {onTake && (
         <button
           onClick={onTake}
-          className="shrink-0 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700"
+          className="mr-3 shrink-0 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700"
         >
           Take
         </button>

@@ -12,6 +12,7 @@ export default function UsersPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [newRole, setNewRole] = useState<Role>("team");
   const [creating, setCreating] = useState(false);
   const [justCreated, setJustCreated] = useState<{ email: string; temporaryPassword: string; reset?: boolean } | null>(
@@ -43,7 +44,7 @@ export default function UsersPage() {
     const res = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), role: newRole }),
+      body: JSON.stringify({ email: email.trim(), display_name: name.trim(), role: newRole }),
     });
     const body = await res.json();
     setCreating(false);
@@ -53,6 +54,7 @@ export default function UsersPage() {
     }
     setJustCreated(body);
     setEmail("");
+    setName("");
     setNewRole("team");
     load();
   }
@@ -165,6 +167,18 @@ export default function UsersPage() {
       >
         <label className="block">
           <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+            Name
+          </span>
+          <input
+            className="input"
+            placeholder="e.g. Philip Wingeier"
+            maxLength={80}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
             Email
           </span>
           <input
@@ -223,7 +237,8 @@ export default function UsersPage() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.currentTarget.blur();
                       }}
-                      className="w-40 rounded-md border border-transparent px-2 py-1 text-sm text-slate-900 hover:border-slate-200 focus:border-slate-400 focus:outline-none"
+                      placeholder="Add a name"
+                      className="w-44 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-3 text-slate-900">

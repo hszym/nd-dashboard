@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const role = body?.role;
+  const displayName = typeof body?.display_name === "string" ? body.display_name.trim().slice(0, 80) : "";
   if (!email || !isValidRole(role)) {
     return NextResponse.json({ error: "Missing or invalid email/role" }, { status: 400 });
   }
@@ -86,15 +87,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // New accounts default to "team" via the on_auth_user_created trigger —
-  // only need to touch it if admin was requested.
-  if (role === "admin") {
-    const { error: roleError } = await adminClient
+  // New accounts default to "team" (and a name taken from the email) via the
+  // on_auth_user_created trigger — only touch them for admin or a chosen name.
+  const patch: Record<string, string> = {};
+  if (role === "admin") patch.role = "admin";
+  if (displayName) patch.display_name = displayName;
+  if (Object.keys(patch).length) {
+    const { error: profileError } = await adminClient
       .from("profiles")
-      .update({ role: "admin" })
+      .update(patch)
       .eq("id", created.user.id);
-    if (roleError) {
-      return NextResponse.json({ error: roleError.message }, { status: 500 });
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
     }
   }
 
