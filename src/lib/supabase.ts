@@ -70,9 +70,63 @@ export interface Case {
   updated_at: string;
 }
 
+/** A funding round of a deal (table `case_rounds`); every deal has at least one. */
+export interface CaseRound {
+  id: string;
+  case_id: string;
+  name: string;
+  sort: number;
+  status: "raising" | "closed";
+  currency: string;
+  amount_target: number | null;
+  amount_remaining: number | null;
+  deadline: string | null;
+}
+
+/** These documents exist once per round; the others (Deck, Executive Summary, Intro Email) are shared by the deal. */
+export const ROUND_DOCUMENT_TYPES: DocumentType[] = ["Term Sheet", "2-pager", "Case Review"];
+
+export const isRoundDocumentType = (t: DocumentType) => ROUND_DOCUMENT_TYPES.includes(t);
+
+/** The round being worked on: the last one still raising, else the last one. */
+export function currentRound(rounds: CaseRound[]): CaseRound | null {
+  const sorted = [...rounds].sort((a, b) => a.sort - b.sort);
+  return [...sorted].reverse().find((r) => r.status === "raising") ?? sorted[sorted.length - 1] ?? null;
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  target: number;
+  raised: number;
+  remaining: number;
+}
+
+/** Cumulative objective of all rounds, one line per currency (two currencies are never added together). */
+export function roundTotals(rounds: CaseRound[]): CurrencyTotal[] {
+  const by = new Map<string, CurrencyTotal>();
+  for (const r of rounds) {
+    if (r.amount_target === null) continue;
+    const remaining = r.amount_remaining ?? r.amount_target;
+    const t = by.get(r.currency) ?? { currency: r.currency, target: 0, raised: 0, remaining: 0 };
+    t.target += r.amount_target;
+    t.remaining += remaining;
+    t.raised += Math.max(r.amount_target - remaining, 0);
+    by.set(r.currency, t);
+  }
+  return [...by.values()];
+}
+
+/** The documents that count for the deal right now: the shared ones plus the current round's. */
+export function activeDocuments(documents: CaseDocument[], rounds: CaseRound[]): CaseDocument[] {
+  const cur = currentRound(rounds)?.id ?? null;
+  return documents.filter((d) => d.round_id == null || d.round_id === cur);
+}
+
 export interface CaseDocument {
   id: string;
   case_id: string;
+  /** The round it belongs to (Term Sheet, 2-pager, Case Review); null for the shared documents. */
+  round_id?: string | null;
   type: DocumentType;
   status: DocumentStatus;
   file_url: string | null;

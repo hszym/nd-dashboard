@@ -9,6 +9,8 @@ import {
   isDocumentStatus,
   isDocumentType,
   mirrorPath,
+  resolveRound,
+  ROUND_DOCUMENT_TYPES,
 } from "@/lib/agent-documents";
 
 // A deal's documents for Claude: read what exists, then record each document's status,
@@ -30,16 +32,33 @@ export async function GET(request: NextRequest) {
   const deal = await findCase(admin, request.nextUrl.searchParams.get("slug"));
   if (!deal) return NextResponse.json({ error: "Unknown deal." }, { status: 404 });
 
-  const [{ data: documents, error }, { data: fields }] = await Promise.all([
-    admin.from("documents").select("id, type, status, file_url, attachment_url, mirror_path, mirror_hash, mirror_synced_at, updated_at").eq("case_id", deal.id),
+  const [{ data: documents, error }, { data: fields }, { data: rounds }] = await Promise.all([
+    admin.from("documents").select("id, type, round_id, status, file_url, attachment_url, mirror_path, mirror_hash, mirror_synced_at, updated_at").eq("case_id", deal.id),
     admin
       .from("cases")
-      .select("sector, currency, amount_target, amount_remaining, deadline, website_url, intro_email_subject, intro_email_text, intro_email_html")
+      .select("sector, website_url, intro_email_subject, intro_email_text, intro_email_html")
       .eq("id", deal.id)
       .maybeSingle(),
+    admin.from("case_rounds").select("id, name, sort, status, currency, amount_target, amount_remaining, deadline").eq("case_id", deal.id).order("sort"),
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ deal, documents: documents ?? [], case: fields });
+  // The deal's money lives in its rounds. For callers that only know one objective, the
+  // current round's figures are repeated in `case` (currency, amount_target, amount_remaining, deadline).
+  const current = await resolveRound(admin, deal.id, undefined);
+  const cur = (rounds ?? []).find((r) => r.id === current?.id);
+  return NextResponse.json({
+    deal,
+    documents: documents ?? [],
+    rounds: rounds ?? [],
+    current_round: cur?.name ?? null,
+    case: {
+      ...fields,
+      currency: cur?.currency ?? null,
+      amount_target: cur?.amount_target ?? null,
+      amount_remaining: cur?.amount_remaining ?? null,
+      deadline: cur?.deadline ?? null,
+    },
+  });
 }
 
 /** Creates or updates one document row. Only the fields sent are changed. */
@@ -54,6 +73,13 @@ export async function POST(request: NextRequest) {
   if (!deal) return NextResponse.json({ error: "Unknown deal." }, { status: 404 });
   if (!isDocumentType(body?.type)) return NextResponse.json({ error: "Unknown document type." }, { status: 400 });
   const type = body.type;
+
+  // Term Sheet, 2-pager and Case Review belong to a round: the one named in `round`, else the current one.
+  let round = null;
+  if (ROUND_DOCUMENT_TYPES.includes(type)) {
+    round = await resolveRound(admin, deal.id, body.round);
+    if (!round) return NextResponse.json({ error: "Unknown round." }, { status: 400 });
+  }
 
   const patch: Record<string, unknown> = {};
   if (body.status !== undefined) {
@@ -83,7 +109,7 @@ export async function POST(request: NextRequest) {
   }
   if (body.mirror_path !== undefined) {
     if (type === "Intro Email") return NextResponse.json({ error: "The Intro Email has no PDF." }, { status: 400 });
-    if (body.mirror_path !== mirrorPath(deal.id, type)) {
+    if (body.mirror_path !== mirrorPath(deal.id, type, round)) {
       return NextResponse.json({ error: "Invalid mirror path." }, { status: 400 });
     }
     const hash = body.mirror_hash;
@@ -104,13 +130,9 @@ export async function POST(request: NextRequest) {
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
   patch.updated_at = new Date().toISOString();
 
-  const { data: existing } = await admin
-    .from("documents")
-    .select("id")
-    .eq("case_id", deal.id)
-    .eq("type", type)
-    .limit(1)
-    .maybeSingle();
+  let lookup = admin.from("documents").select("id").eq("case_id", deal.id).eq("type", type);
+  lookup = round ? lookup.eq("round_id", round.id) : lookup.is("round_id", null);
+  const { data: existing } = await lookup.limit(1).maybeSingle();
 
   if (existing) {
     const { data, error } = await admin.from("documents").update(patch).eq("id", existing.id).select("id, type, status, file_url, attachment_url").single();
@@ -119,7 +141,7 @@ export async function POST(request: NextRequest) {
   }
   const { data, error } = await admin
     .from("documents")
-    .insert({ case_id: deal.id, type, status: "Missing", ...patch })
+    .insert({ case_id: deal.id, round_id: round?.id ?? null, type, status: "Missing", ...patch })
     .select("id, type, status, file_url, attachment_url")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

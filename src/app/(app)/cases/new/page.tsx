@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   supabase,
   DOCUMENT_TYPES,
+  isRoundDocumentType,
   BrandColor,
   Stage,
   COMMON_CURRENCIES,
@@ -89,8 +90,18 @@ export default function NewCasePage() {
       return;
     }
 
+    // The database creates "Round 1" with the deal (from the amounts typed above); the
+    // Term Sheet, 2-pager and Case Review belong to it, the other documents are shared.
+    const { data: firstRound } = await supabase
+      .from("case_rounds")
+      .select("id")
+      .eq("case_id", caseRow.id)
+      .order("sort")
+      .limit(1)
+      .maybeSingle();
     const docRows = DOCUMENT_TYPES.map((type) => ({
       case_id: caseRow.id,
+      round_id: isRoundDocumentType(type) ? (firstRound?.id ?? null) : null,
       type,
       status: "Missing" as const,
     }));

@@ -61,19 +61,24 @@ export async function loadTasks(
   };
 }
 
-/** Number of open tasks the person has on each deal (by case id). */
-export async function loadTaskCounts(userId: string): Promise<Record<string, number>> {
+/** Open tasks per deal (by case id): the person's own, and the questions nobody has taken yet. */
+export async function loadTaskCounts(
+  userId: string
+): Promise<{ mine: Record<string, number>; toTake: Record<string, number> }> {
   const { data } = await supabase
     .from("my_open_tasks")
-    .select("case_id")
-    .eq("assignee_id", userId)
+    .select("case_id, assignee_id")
+    .or(`assignee_id.eq.${userId},and(kind.eq.question,assignee_id.is.null)`)
     .limit(5000);
-  const counts: Record<string, number> = {};
+  const mine: Record<string, number> = {};
+  const toTake: Record<string, number> = {};
   for (const r of data ?? []) {
     const id = r.case_id as string | null;
-    if (id) counts[id] = (counts[id] ?? 0) + 1;
+    if (!id) continue;
+    const bucket = r.assignee_id === userId ? mine : toTake;
+    bucket[id] = (bucket[id] ?? 0) + 1;
   }
-  return counts;
+  return { mine, toTake };
 }
 
 /**
@@ -91,13 +96,15 @@ export async function assignDocument(
   caseId: string,
   type: string,
   assignee: string | null,
-  due: string | null = null
+  due: string | null = null,
+  roundId: string | null = null
 ) {
   return supabase.rpc("assign_document", {
     p_case_id: caseId,
     p_type: type,
     p_assignee: assignee,
     p_due: due,
+    p_round_id: roundId,
   });
 }
 

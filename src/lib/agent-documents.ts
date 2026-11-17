@@ -1,6 +1,8 @@
 // Shared constants for the agent API that publishes deal documents (server-side only).
 // Kept separate from @/lib/supabase, which creates a browser client when imported.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 export const AGENT_DOCUMENT_TYPES = [
   "Case Review",
   "2-pager",
@@ -22,9 +24,43 @@ export const CASE_FILES_BUCKET_NAME = "case-files";
 /** Private bucket holding one current PDF copy of each document (OneDrive stays the source). */
 export const DEAL_DOCUMENTS_BUCKET_NAME = "deal-documents";
 
-export function mirrorPath(caseId: string, type: AgentDocumentType): string {
+/** These documents exist once per funding round; the others are shared by the whole deal. */
+export const ROUND_DOCUMENT_TYPES: AgentDocumentType[] = ["Term Sheet", "2-pager", "Case Review"];
+
+export interface RoundRef {
+  id: string;
+  name: string;
+  /** The deal's first round keeps the original file names, so nothing already stored moves. */
+  first: boolean;
+}
+
+/**
+ * The round an agent call is about: the one named (by name or id), else the current one
+ * (the last still raising, otherwise the last). Returns null for an unknown name.
+ */
+export async function resolveRound(
+  admin: SupabaseClient,
+  caseId: string,
+  requested: unknown
+): Promise<RoundRef | null> {
+  const { data } = await admin
+    .from("case_rounds")
+    .select("id, name, sort, status")
+    .eq("case_id", caseId)
+    .order("sort");
+  const rounds = (data ?? []) as { id: string; name: string; sort: number; status: string }[];
+  if (rounds.length === 0) return null;
+  const pick =
+    typeof requested === "string" && requested.trim()
+      ? rounds.find((r) => r.id === requested.trim() || r.name.toLowerCase() === requested.trim().toLowerCase())
+      : ([...rounds].reverse().find((r) => r.status === "raising") ?? rounds[rounds.length - 1]);
+  return pick ? { id: pick.id, name: pick.name, first: pick.id === rounds[0].id } : null;
+}
+
+export function mirrorPath(caseId: string, type: AgentDocumentType, round?: RoundRef | null): string {
   const slug = type.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  return `${caseId}/${slug}.pdf`;
+  const suffix = round && !round.first && ROUND_DOCUMENT_TYPES.includes(type) ? `-${round.id.slice(0, 8)}` : "";
+  return `${caseId}/${slug}${suffix}.pdf`;
 }
 
 export function isDocumentType(v: unknown): v is AgentDocumentType {

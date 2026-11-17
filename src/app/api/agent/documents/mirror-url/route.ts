@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAgent } from "@/lib/agent-auth";
-import { DEAL_DOCUMENTS_BUCKET_NAME, isDocumentType, mirrorPath } from "@/lib/agent-documents";
+import {
+  DEAL_DOCUMENTS_BUCKET_NAME,
+  ROUND_DOCUMENT_TYPES,
+  isDocumentType,
+  mirrorPath,
+  resolveRound,
+} from "@/lib/agent-documents";
 
 // Step 1 of mirroring a PDF: returns a one-time signed upload URL into the private bucket.
 // The file replaces the previous copy. The caller PUTs the PDF, then calls
@@ -20,7 +26,14 @@ export async function POST(request: NextRequest) {
   const { data: deal } = await admin.from("cases").select("id").eq("slug", slug).maybeSingle();
   if (!deal) return NextResponse.json({ error: "Unknown deal." }, { status: 404 });
 
-  const path = mirrorPath(deal.id, body.type);
+  // Round documents get one copy per round; `round` names it (default: the current round).
+  let round = null;
+  if (ROUND_DOCUMENT_TYPES.includes(body.type)) {
+    round = await resolveRound(admin, deal.id, body.round);
+    if (!round) return NextResponse.json({ error: "Unknown round." }, { status: 400 });
+  }
+
+  const path = mirrorPath(deal.id, body.type, round);
   const { data, error } = await admin.storage
     .from(DEAL_DOCUMENTS_BUCKET_NAME)
     .createSignedUploadUrl(path, { upsert: true });

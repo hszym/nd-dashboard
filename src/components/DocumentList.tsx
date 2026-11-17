@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   supabase,
   CaseDocument,
+  CaseRound,
+  activeDocuments,
+  currentRound,
   isDocumentReady,
   emailAttachments,
   EMAIL_ATTACHMENT_TYPES,
@@ -53,6 +56,7 @@ export default function DocumentList({
   caseId,
   caseName,
   documents,
+  rounds,
   editable,
   folderUrl,
   introEmail,
@@ -64,6 +68,8 @@ export default function DocumentList({
   caseId: string;
   caseName: string;
   documents: CaseDocument[];
+  /** The deal's funding rounds: the Term Sheet, 2-pager and Case Review exist once per round. */
+  rounds: CaseRound[];
   editable: boolean;
   /** The deal's OneDrive folder, offered as a shortcut for admins. */
   folderUrl?: string | null;
@@ -75,6 +81,9 @@ export default function DocumentList({
   ) => void;
 }) {
   const [openType, setOpenType] = useState<string | null>(null);
+  // Which round's documents are on show (the current one until another is picked).
+  const [pickedRound, setPickedRound] = useState<string | null>(null);
+  const viewRound = rounds.find((r) => r.id === pickedRound) ?? currentRound(rounds);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [me, setMe] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
@@ -86,7 +95,7 @@ export default function DocumentList({
 
   async function assign(doc: CaseDocument, assignee: string | null, due: string | null) {
     setAssignError(null);
-    const { error } = await assignDocument(caseId, doc.type, assignee, due);
+    const { error } = await assignDocument(caseId, doc.type, assignee, due, doc.round_id ?? null);
     if (error) {
       setAssignError(error.message);
       return;
@@ -94,13 +103,17 @@ export default function DocumentList({
     onAssigned();
   }
 
-  const isReady = (d: CaseDocument) => isDocumentReady(d, documents);
+  // The shared documents, plus the round documents of the round on show.
+  const inView = documents.filter((d) => d.round_id == null || d.round_id === viewRound?.id);
+  // The intro email goes out with the current round's PDFs.
+  const attach = activeDocuments(documents, rounds);
+  const isReady = (d: CaseDocument) => isDocumentReady(d, attach);
   // Members see what is ready, plus what is waiting for them to provide.
   const shown = editable
-    ? documents
-    : documents.filter((d) => isReady(d) || (me !== null && d.assignee_id === me));
-  const ready = documents.filter(isReady).length;
-  const attachments = emailAttachments(documents);
+    ? inView
+    : inView.filter((d) => isReady(d) || (me !== null && d.assignee_id === me));
+  const ready = inView.filter(isReady).length;
+  const attachments = emailAttachments(attach);
 
   if (!editable && shown.length === 0) {
     return <p className="text-sm text-slate-500">No documents available yet.</p>;
@@ -111,7 +124,7 @@ export default function DocumentList({
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium text-slate-900">
-            {ready} of {documents.length} ready
+            {ready} of {inView.length} ready
           </span>
           {editable && folderUrl && (
             <a
@@ -128,10 +141,34 @@ export default function DocumentList({
           <div
             className="h-full rounded-full bg-emerald-500 transition-all"
             style={{
-              width: `${documents.length ? (ready / documents.length) * 100 : 0}%`,
+              width: `${inView.length ? (ready / inView.length) * 100 : 0}%`,
             }}
           />
         </div>
+        {rounds.length > 1 && (
+          <div className="space-y-1.5 pt-1">
+            <p className="text-[11px] text-slate-400">
+              Term Sheet, 2-pager and Case Review belong to a funding round.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {rounds.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  aria-pressed={r.id === viewRound?.id}
+                  onClick={() => setPickedRound(r.id)}
+                  className={`rounded-full border px-2.5 py-1 text-xs ${
+                    r.id === viewRound?.id
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+                  }`}
+                >
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {assignError && (
@@ -143,7 +180,7 @@ export default function DocumentList({
           // The intro email has nothing to store: its card opens the email directly.
           if (doc.type === "Intro Email") {
             return (
-              <li key={doc.type}>
+              <li key={doc.id}>
                 <IntroEmailCard
                   caseName={caseName}
                   template={introEmail}
@@ -164,9 +201,9 @@ export default function DocumentList({
           const hasLink = hasMirror || Boolean(doc.file_url);
           const href = hasMirror ? `/api/documents/${doc.id}/open` : doc.file_url!;
           const available = isReady(doc);
-          const expanded = openType === doc.type && editable;
+          const expanded = openType === doc.id && editable;
 
-          const toggle = () => setOpenType(expanded ? null : doc.type);
+          const toggle = () => setOpenType(expanded ? null : doc.id);
 
           const updated =
             hasMirror && doc.mirror_synced_at
@@ -229,7 +266,7 @@ export default function DocumentList({
 
           return (
             <li
-              key={doc.type}
+              key={doc.id}
               className={`rounded-2xl border transition-shadow ${
                 isInternal ? "bg-rose-50/60" : "bg-white"
               } ${

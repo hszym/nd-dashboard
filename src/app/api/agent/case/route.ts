@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAgent } from "@/lib/agent-auth";
-import { cleanHttpsUrl } from "@/lib/agent-documents";
+import { cleanHttpsUrl, resolveRound } from "@/lib/agent-documents";
 
 // A few descriptive fields of a deal and its intro email template, for Claude. Admin tokens only.
 // mode "fill" (default) only writes fields that are empty today, so nothing a member typed is
@@ -23,14 +23,19 @@ const money: Cleaner = (v) => {
 
 const FIELDS: Record<string, Cleaner> = {
   sector: text(120),
-  currency: (v) => (typeof v === "string" && /^[A-Z]{3}$/.test(v.trim()) ? v.trim() : v === null ? null : undefined),
-  amount_target: money,
-  amount_remaining: money,
-  deadline: (v) => (v === null ? null : typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined),
   website_url: (v) => cleanHttpsUrl(v),
   intro_email_subject: text(300),
   intro_email_text: text(5000),
   intro_email_html: text(20000),
+};
+
+// The deal's money lives in its funding rounds. These fields apply to the round named in `round`
+// (by name or id), or to the current round (the last one still raising) when none is named.
+const ROUND_FIELDS: Record<string, Cleaner> = {
+  currency: (v) => (typeof v === "string" && /^[A-Z]{3}$/.test(v.trim()) ? v.trim() : v === null ? null : undefined),
+  amount_target: money,
+  amount_remaining: money,
+  deadline: (v) => (v === null ? null : typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined),
 };
 
 export async function POST(request: NextRequest) {
@@ -49,21 +54,33 @@ export async function POST(request: NextRequest) {
   const { data: current } = await admin.from("cases").select("*").eq("slug", slug).maybeSingle();
   if (!current) return NextResponse.json({ error: "Unknown deal." }, { status: 404 });
 
+  const round = await resolveRound(admin, current.id, body.round);
+  const { data: roundRow } = round
+    ? await admin.from("case_rounds").select("*").eq("id", round.id).maybeSingle()
+    : { data: null };
+
   const patch: Record<string, unknown> = {};
+  const roundPatch: Record<string, unknown> = {};
   const skipped: { field: string; reason: string }[] = [];
   for (const [key, value] of Object.entries(body.fields as Record<string, unknown>)) {
-    const clean = FIELDS[key];
+    const isRoundField = key in ROUND_FIELDS;
+    const clean = FIELDS[key] ?? ROUND_FIELDS[key];
     if (!clean) { skipped.push({ field: key, reason: "not allowed" }); continue; }
+    if (isRoundField && !roundRow) { skipped.push({ field: key, reason: "unknown round" }); continue; }
     const v = clean(value);
     if (v === undefined) { skipped.push({ field: key, reason: "invalid value" }); continue; }
-    const existing = (current as Record<string, unknown>)[key];
+    const existing = ((isRoundField ? roundRow : current) as Record<string, unknown>)[key];
     const hasValue = existing !== null && existing !== undefined && String(existing).trim() !== "";
     if (mode === "fill" && hasValue) { skipped.push({ field: key, reason: "already has a value" }); continue; }
-    patch[key] = v;
+    (isRoundField ? roundPatch : patch)[key] = v;
+  }
+  if (Object.keys(roundPatch).length > 0 && roundRow) {
+    const { error } = await admin.from("case_rounds").update(roundPatch).eq("id", roundRow.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
   if (Object.keys(patch).length > 0) {
     const { error } = await admin.from("cases").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", current.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ updated: Object.keys(patch), skipped });
+  return NextResponse.json({ updated: [...Object.keys(roundPatch), ...Object.keys(patch)], round: round?.name ?? null, skipped });
 }

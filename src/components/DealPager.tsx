@@ -5,8 +5,9 @@ import {
   supabase,
   Case,
   CaseDocument,
-  DOCUMENT_TYPES,
+  CaseRound,
   Nda,
+  activeDocuments,
   isDocumentReady,
 } from "@/lib/supabase";
 import StageBadge from "@/components/StageBadge";
@@ -41,6 +42,7 @@ const INACTIVE_CLIP = (inactive: boolean) =>
 export default function DealPager({
   caseData,
   documents,
+  rounds,
   role,
   onUpdateDocument,
   onReload,
@@ -48,6 +50,7 @@ export default function DealPager({
 }: {
   caseData: Case;
   documents: CaseDocument[];
+  rounds: CaseRound[];
   role: "admin" | "team";
   onUpdateDocument: (
     doc: CaseDocument,
@@ -137,7 +140,9 @@ export default function DealPager({
     setSheet(key);
   }
 
-  const done = documents.filter((d) => isDocumentReady(d, documents)).length;
+  // Shared documents plus the current round's.
+  const activeDocs = activeDocuments(documents, rounds);
+  const done = activeDocs.filter((d) => isDocumentReady(d, activeDocs)).length;
   const subline = [
     caseData.sector,
     caseData.sponsor && `Sponsor: ${caseData.sponsor}`,
@@ -216,6 +221,7 @@ export default function DealPager({
               <StandingTile
                 caseData={caseData}
                 documents={documents}
+                rounds={rounds}
                 lps={lps}
                 showMoney={isAdmin}
               />
@@ -224,7 +230,7 @@ export default function DealPager({
             <Tile
               onClick={() => open("documents")}
               title="Documents"
-              subtitle={`${done}/${DOCUMENT_TYPES.length} ready`}
+              subtitle={`${done}/${activeDocs.length} ready`}
             />
             <Tile
               onClick={() => open("nda")}
@@ -251,6 +257,8 @@ export default function DealPager({
               {editing && isAdmin ? (
                 <CaseEditForm
                   caseData={caseData}
+                  rounds={rounds}
+                  onRoundsChanged={onReload}
                   onSaved={() => {
                     setEditing(false);
                     onReload();
@@ -261,6 +269,7 @@ export default function DealPager({
               ) : (
                 <InfoView
                   caseData={caseData}
+                  rounds={rounds}
                   isAdmin={isAdmin}
                   onEdit={() => setEditing(true)}
                 />
@@ -322,6 +331,7 @@ export default function DealPager({
         <StandingDetail
           caseData={caseData}
           documents={documents}
+          rounds={rounds}
           lps={lps}
           showMoney={isAdmin}
         />
@@ -331,6 +341,7 @@ export default function DealPager({
         <DocumentList
           caseId={caseData.id}
           documents={documents}
+          rounds={rounds}
           editable={isAdmin}
           caseName={caseData.name}
           folderUrl={caseData.onedrive_url}
@@ -448,10 +459,12 @@ function Tile({
 
 function InfoView({
   caseData,
+  rounds,
   isAdmin,
   onEdit,
 }: {
   caseData: Case;
+  rounds: CaseRound[];
   isAdmin: boolean;
   onEdit: () => void;
 }) {
@@ -462,15 +475,19 @@ function InfoView({
         <Row label="Sector" value={caseData.sector ?? "—"} />
         {isAdmin && (
           <>
-            <Row
-              label="Target"
-              value={formatAmount(caseData.amount_target, caseData.currency)}
-            />
-            <Row
-              label="Remaining"
-              value={formatAmount(caseData.amount_remaining, caseData.currency)}
-            />
-            <Row label="Deadline" value={formatDate(caseData.deadline)} />
+            {rounds.map((r) => (
+              <div key={r.id} className="space-y-3">
+                {rounds.length > 1 && (
+                  <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    {r.name}
+                    {r.status === "closed" ? " · closed" : ""}
+                  </p>
+                )}
+                <Row label="Target" value={formatAmount(r.amount_target, r.currency)} />
+                <Row label="Remaining" value={formatAmount(r.amount_remaining, r.currency)} />
+                <Row label="Deadline" value={formatDate(r.deadline)} />
+              </div>
+            ))}
           </>
         )}
       </dl>

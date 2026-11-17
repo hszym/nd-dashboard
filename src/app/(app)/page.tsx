@@ -13,11 +13,17 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(0);
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
+  const [toTakeCounts, setToTakeCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let live = true;
     currentUserId().then((id) => {
-      if (id) loadTaskCounts(id).then((c) => live && setTaskCounts(c));
+      if (id)
+        loadTaskCounts(id).then((c) => {
+          if (!live) return;
+          setTaskCounts(c.mine);
+          setToTakeCounts(c.toTake);
+        });
     });
     return () => {
       live = false;
@@ -71,6 +77,7 @@ export default function HomePage() {
             active={active}
             onActiveChange={setActive}
             taskCounts={taskCounts}
+            toTakeCounts={toTakeCounts}
           />
           {current && (
             <p className="mt-5 text-center text-sm text-slate-500">

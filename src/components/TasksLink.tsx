@@ -13,7 +13,7 @@ export default function TasksLink({ className = "" }: { className?: string }) {
     currentUserId().then((id) => {
       if (!id) return;
       loadTaskCounts(id).then((c) => {
-        if (live) setTotal(Object.values(c).reduce((a, b) => a + b, 0));
+        if (live) setTotal(Object.values(c.mine).reduce((a, b) => a + b, 0));
       });
     });
     return () => {

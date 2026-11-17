@@ -5,13 +5,26 @@ import type { Case } from "@/lib/supabase";
 import ProjectCard from "./ProjectCard";
 import NewDealCard from "./NewDealCard";
 
-/** Red notification dot, top right of a deal: hidden at 0, "9+" beyond nine. */
-function TaskBadge({ count }: { count: number }) {
+/**
+ * Notification dot, top right of a deal: red for the person's own open tasks; when they
+ * have none, grey for the deal's open questions nobody has taken. Hidden at 0, "9+" beyond nine.
+ */
+function TaskBadge({ mine, toTake }: { mine: number; toTake: number }) {
+  const count = mine > 0 ? mine : toTake;
   if (count <= 0) return null;
+  const red = mine > 0;
   return (
     <span
-      aria-label={`${count} open ${count === 1 ? "task" : "tasks"} for you`}
-      className="pointer-events-none absolute -right-1.5 -top-1.5 z-10 flex h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-1.5 text-[13px] font-semibold leading-none text-white shadow-[0_4px_10px_-2px_rgba(239,68,68,0.6)] ring-2 ring-white"
+      aria-label={
+        red
+          ? `${count} open ${count === 1 ? "task" : "tasks"} for you`
+          : `${count} open ${count === 1 ? "question" : "questions"} nobody has taken`
+      }
+      className={`pointer-events-none absolute -right-1.5 -top-1.5 z-10 flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-[13px] font-semibold leading-none text-white ring-2 ring-white ${
+        red
+          ? "bg-red-500 shadow-[0_4px_10px_-2px_rgba(239,68,68,0.6)]"
+          : "bg-slate-400 shadow-[0_4px_10px_-2px_rgba(100,116,139,0.5)]"
+      }`}
     >
       {count > 9 ? "9+" : count}
     </span>
@@ -24,7 +37,10 @@ export default function ProjectCarousel({
   active,
   onActiveChange,
   taskCounts = {},
+  toTakeCounts = {},
 }: {
+  /** Open questions nobody has taken, per deal; shown in grey when the person has no task there. */
+  toTakeCounts?: Record<string, number>;
   /** Open tasks of the signed-in person per deal (case id); drives the red badge. */
   taskCounts?: Record<string, number>;
   projects: Case[];
@@ -114,7 +130,7 @@ export default function ProjectCarousel({
               onSelect={() => scrollTo(i)}
             />
             {/* Outside the card (which clips its content) so it can overhang the corner. */}
-            <TaskBadge count={taskCounts[p.id] ?? 0} />
+            <TaskBadge mine={taskCounts[p.id] ?? 0} toTake={toTakeCounts[p.id] ?? 0} />
           </div>
         ))}
         {showAddCard && (
