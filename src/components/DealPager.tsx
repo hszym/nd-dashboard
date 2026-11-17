@@ -9,6 +9,7 @@ import {
   Nda,
   activeDocuments,
   isDocumentReady,
+  isUnreviewed,
 } from "@/lib/supabase";
 import StageBadge from "@/components/StageBadge";
 import CaseLogo from "@/components/CaseLogo";
@@ -143,6 +144,7 @@ export default function DealPager({
   // Shared documents plus the current round's.
   const activeDocs = activeDocuments(documents, rounds);
   const done = activeDocs.filter((d) => isDocumentReady(d, activeDocs)).length;
+  const unreviewedCount = documents.filter(isUnreviewed).length;
   const subline = [
     caseData.sector,
     caseData.sponsor && `Sponsor: ${caseData.sponsor}`,
@@ -230,7 +232,14 @@ export default function DealPager({
             <Tile
               onClick={() => open("documents")}
               title="Documents"
-              subtitle={`${done}/${activeDocs.length} ready`}
+              subtitle={
+                <>
+                  {done}/{activeDocs.length} ready
+                  {unreviewedCount > 0 && (
+                    <span className="font-medium text-red-600"> · {unreviewedCount} unreviewed</span>
+                  )}
+                </>
+              }
             />
             <Tile
               onClick={() => open("nda")}
@@ -431,7 +440,7 @@ function Tile({
   children,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   onClick: () => void;
   children?: React.ReactNode;
 }) {

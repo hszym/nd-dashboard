@@ -10,6 +10,7 @@ import {
   activeDocuments,
   currentRound,
   isDocumentReady,
+  isUnreviewed,
   roundTotals,
 } from "@/lib/supabase";
 import { formatAmount, formatDate, daysUntil } from "@/lib/utils";
@@ -176,7 +177,9 @@ export function StandingDetail({
           {activeDocuments(documents, rounds).map((d) => (
             <li key={d.id} className="flex justify-between text-slate-700">
               <span>{d.type}</span>
-              <span className="text-slate-500">{d.status}</span>
+              <span className={isUnreviewed(d) ? "font-medium text-red-600" : "text-slate-500"}>
+                {isUnreviewed(d) ? "Unreviewed" : d.status}
+              </span>
             </li>
           ))}
         </ul>

@@ -5,9 +5,12 @@ import {
   supabase,
   CaseDocument,
   CaseRound,
+  REQUIRED_REVIEWS,
   activeDocuments,
   currentRound,
   isDocumentReady,
+  isUnreviewed,
+  needsReview,
   emailAttachments,
   EMAIL_ATTACHMENT_TYPES,
   CASE_FILES_BUCKET,
@@ -17,6 +20,7 @@ import {
 import IntroEmailCard from "@/components/IntroEmailPanel";
 import type { IntroEmailTemplate } from "@/lib/intro-email";
 import AssigneeSelect from "@/components/AssigneeSelect";
+import { markReviewed, unmarkReviewed } from "@/lib/documents";
 import {
   TeamMember,
   assignDocument,
@@ -107,6 +111,17 @@ export default function DocumentList({
   const inView = documents.filter((d) => d.round_id == null || d.round_id === viewRound?.id);
   // The intro email goes out with the current round's PDFs.
   const attach = activeDocuments(documents, rounds);
+  async function review(doc: CaseDocument, undo: boolean) {
+    if (!me) return;
+    setAssignError(null);
+    const err = undo ? await unmarkReviewed(doc.id, me) : await markReviewed(doc.id, me);
+    if (err) {
+      setAssignError(err);
+      return;
+    }
+    onAssigned();
+  }
+
   const isReady = (d: CaseDocument) => isDocumentReady(d, attach);
   // Members see what is ready, plus what is waiting for them to provide.
   const shown = editable
@@ -205,6 +220,15 @@ export default function DocumentList({
 
           const toggle = () => setOpenType(expanded ? null : doc.id);
 
+          // Reviews: red until REQUIRED_REVIEWS different people have reviewed this version.
+          const reviewable = needsReview(doc);
+          const reviewers = doc.reviewer_ids ?? [];
+          const unreviewed = isUnreviewed(doc);
+          const reviewedByMe = me !== null && reviewers.includes(me);
+          const reviewerNames = reviewers
+            .map((id) => team.find((m) => m.id === id)?.name ?? "Someone")
+            .join(", ");
+
           const updated =
             hasMirror && doc.mirror_synced_at
               ? `Updated ${new Date(doc.mirror_synced_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
@@ -242,6 +266,15 @@ export default function DocumentList({
                       Internal
                     </span>
                   )}
+                  {reviewable && (
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                        unreviewed ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {unreviewed ? "Unreviewed" : "Reviewed"} · {Math.min(reviewers.length, REQUIRED_REVIEWS)}/{REQUIRED_REVIEWS}
+                    </span>
+                  )}
                 </span>
                 {subtitleText && (
                   <span
@@ -268,15 +301,17 @@ export default function DocumentList({
             <li
               key={doc.id}
               className={`rounded-2xl border transition-shadow ${
-                isInternal ? "bg-rose-50/60" : "bg-white"
+                isInternal ? "bg-rose-50/60" : unreviewed ? "bg-red-50/40" : "bg-white"
               } ${
-                expanded
-                  ? isInternal
-                    ? "border-rose-300 shadow-sm"
-                    : "border-slate-300 shadow-sm"
-                  : isInternal
-                    ? "border-rose-200 hover:shadow-sm"
-                    : "border-slate-200 hover:shadow-sm"
+                unreviewed
+                  ? "border-red-300 hover:shadow-sm"
+                  : expanded
+                    ? isInternal
+                      ? "border-rose-300 shadow-sm"
+                      : "border-slate-300 shadow-sm"
+                    : isInternal
+                      ? "border-rose-200 hover:shadow-sm"
+                      : "border-slate-200 hover:shadow-sm"
               }`}
             >
               <div className="flex items-center">
@@ -324,6 +359,27 @@ export default function DocumentList({
                   </button>
                 )}
               </div>
+
+              {reviewable && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
+                  <span className="min-w-0 flex-1">
+                    {reviewers.length > 0 ? `Reviewed by ${reviewerNames}` : "Nobody has reviewed this version yet"}
+                  </span>
+                  {me && (
+                    <button
+                      type="button"
+                      onClick={() => review(doc, reviewedByMe)}
+                      className={`shrink-0 rounded-full px-3 py-1 font-medium ${
+                        reviewedByMe
+                          ? "text-slate-400 hover:text-slate-900"
+                          : "bg-slate-900 text-white hover:bg-slate-700"
+                      }`}
+                    >
+                      {reviewedByMe ? "Undo my review" : "Mark as reviewed"}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {!isReady(doc) && (
                 <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-3 py-2 text-xs text-slate-500">

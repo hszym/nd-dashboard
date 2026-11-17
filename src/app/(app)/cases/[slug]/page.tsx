@@ -39,14 +39,16 @@ export default function CaseDetailPage() {
     }
     setCaseData(c);
     const [{ data: docs }, { data: roundRows }] = await Promise.all([
-      supabase.from("documents").select("*").eq("case_id", c.id),
+      supabase.from("documents").select("*, document_reviews(user_id)").eq("case_id", c.id),
       supabase.from("case_rounds").select("*").eq("case_id", c.id).order("sort"),
     ]);
     const rs = (roundRows ?? []) as CaseRound[];
     setRounds(rs);
     // One row per document the deal should have: the shared types once, the round types once per round.
     // A document nobody has filled in yet has no row: it is made up here ("missing-…") and inserted on first edit.
-    const rows = (docs ?? []) as CaseDocument[];
+    const rows = ((docs ?? []) as (CaseDocument & { document_reviews?: { user_id: string }[] })[]).map(
+      ({ document_reviews, ...d }) => ({ ...d, reviewer_ids: (document_reviews ?? []).map((r) => r.user_id) })
+    );
     const ordered: CaseDocument[] = [];
     for (const t of DOCUMENT_TYPES) {
       const scopes: (string | null)[] = isRoundDocumentType(t) ? rs.map((r) => r.id) : [null];
@@ -91,7 +93,8 @@ export default function CaseDetailPage() {
     };
     // optimistic update
     setDocuments((prev) =>
-      prev.map((d) => (d.id === doc.id ? { ...d, ...full } : d))
+      // A changed link or PDF is a new version: the database clears its reviews.
+      prev.map((d) => (d.id === doc.id ? { ...d, ...full, reviewer_ids: [] } : d))
     );
     if (doc.id.startsWith("missing-")) {
       const { data, error } = await supabase

@@ -136,6 +136,8 @@ export interface CaseDocument {
   mirror_path: string | null;
   mirror_synced_at: string | null;
   mirror_source: string | null;
+  /** Accounts that have reviewed the current version (cleared by the database when the document changes). */
+  reviewer_ids?: string[];
   /** Who has to provide it (set through `assign_document`). */
   assignee_id?: string | null;
   due_date?: string | null;
@@ -160,6 +162,22 @@ export function emailAttachments(documents: CaseDocument[]): CaseDocument[] {
 export function isDocumentReady(doc: CaseDocument, all: CaseDocument[]): boolean {
   if (doc.type === "Intro Email") return emailAttachments(all).length > 0;
   return Boolean(doc.file_url || doc.mirror_path);
+}
+
+/** A document stays "unreviewed" (red) until this many different people have reviewed it. */
+export const REQUIRED_REVIEWS = 2;
+
+/** Only a document that has a file or link can be reviewed (not a missing one, nor the Intro Email). */
+export function needsReview(doc: CaseDocument): boolean {
+  return (
+    doc.type !== "Intro Email" &&
+    !doc.id.startsWith("missing-") &&
+    Boolean(doc.file_url || doc.mirror_path)
+  );
+}
+
+export function isUnreviewed(doc: CaseDocument): boolean {
+  return needsReview(doc) && (doc.reviewer_ids?.length ?? 0) < REQUIRED_REVIEWS;
 }
 
 /** Public bucket for the PDFs attached to emails (25 MB, PDF only). */
