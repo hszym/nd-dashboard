@@ -44,6 +44,13 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   }
 
+  // Marking someone as able to sell (allowed for oneself too).
+  if (typeof body?.can_sell === "boolean") {
+    const { error } = await adminClient.from("profiles").update({ can_sell: body.can_sell }).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   const role = body?.role;
   if (!isValidRole(role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });

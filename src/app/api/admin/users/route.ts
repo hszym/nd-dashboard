@@ -22,7 +22,7 @@ export async function GET() {
   const [{ data: userList, error: listError }, { data: profiles, error: profilesError }] =
     await Promise.all([
       adminClient.auth.admin.listUsers({ perPage: 200 }),
-      adminClient.from("profiles").select("id, role, display_name"),
+      adminClient.from("profiles").select("id, role, display_name, can_sell"),
     ]);
 
   if (listError || profilesError) {
@@ -34,11 +34,13 @@ export async function GET() {
 
   const roleById = new Map((profiles ?? []).map((p) => [p.id, p.role]));
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name as string | null]));
+  const sellById = new Map((profiles ?? []).map((p) => [p.id, Boolean(p.can_sell)]));
   const rows: AdminUserRow[] = userList.users
     .map((u) => ({
       id: u.id,
       email: u.email ?? null,
       display_name: nameById.get(u.id) ?? null,
+      can_sell: sellById.get(u.id) ?? false,
       role: isValidRole(roleById.get(u.id)) ? (roleById.get(u.id) as "admin" | "team") : "team",
       created_at: u.created_at,
     }))
@@ -57,6 +59,7 @@ export async function POST(request: NextRequest) {
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const role = body?.role;
   const displayName = typeof body?.display_name === "string" ? body.display_name.trim().slice(0, 80) : "";
+  const canSell = body?.can_sell === true;
   if (!email || !isValidRole(role)) {
     return NextResponse.json({ error: "Missing or invalid email/role" }, { status: 400 });
   }
@@ -89,9 +92,10 @@ export async function POST(request: NextRequest) {
 
   // New accounts default to "team" (and a name taken from the email) via the
   // on_auth_user_created trigger — only touch them for admin or a chosen name.
-  const patch: Record<string, string> = {};
+  const patch: Record<string, string | boolean> = {};
   if (role === "admin") patch.role = "admin";
   if (displayName) patch.display_name = displayName;
+  if (canSell) patch.can_sell = true;
   if (Object.keys(patch).length) {
     const { error: profileError } = await adminClient
       .from("profiles")

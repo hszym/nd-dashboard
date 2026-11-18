@@ -18,6 +18,7 @@ import DocumentList from "@/components/DocumentList";
 import CaseEditForm from "@/components/CaseEditForm";
 import BrandKit from "@/components/BrandKit";
 import { StandingTile, StandingDetail } from "@/components/StandingSummary";
+import { TeamMember, loadSales } from "@/lib/tasks";
 import SendNdaPanel from "@/components/SendNdaPanel";
 import OpenQuestions from "@/components/OpenQuestions";
 import AddInfoPanel from "@/components/AddInfoPanel";
@@ -72,6 +73,12 @@ export default function DealPager({
   const [editing, setEditing] = useState(false);
   const [inboxKey, setInboxKey] = useState(0);
   const [lps, setLps] = useState<Nda[] | null>(null);
+  // The people who can sell: one column each in the investors table of "Where do we stand".
+  const [sales, setSales] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    loadSales().then(setSales);
+  }, []);
 
   const loadLps = useCallback(async () => {
     const { data } = await supabase
@@ -222,7 +229,6 @@ export default function DealPager({
             <Tile onClick={() => open("standing")} title="Where do we stand?">
               <StandingTile
                 caseData={caseData}
-                documents={documents}
                 rounds={rounds}
                 lps={lps}
                 showMoney={isAdmin}
@@ -339,8 +345,8 @@ export default function DealPager({
       >
         <StandingDetail
           caseData={caseData}
-          documents={documents}
           rounds={rounds}
+          sales={sales}
           lps={lps}
           showMoney={isAdmin}
         />

@@ -2,23 +2,17 @@
 
 import {
   Case,
-  CaseDocument,
   CaseRound,
   CurrencyTotal,
   Nda,
   LP_STATUSES,
-  activeDocuments,
   currentRound,
-  isDocumentReady,
-  isUnreviewed,
   roundTotals,
 } from "@/lib/supabase";
+import type { TeamMember } from "@/lib/tasks";
 import { formatAmount, formatDate, daysUntil } from "@/lib/utils";
 
-function compute(documents: CaseDocument[], rounds: CaseRound[], lps: Nda[] | null) {
-  // The documents that count right now: the shared ones and the current round's.
-  const active = activeDocuments(documents, rounds);
-  const done = active.filter((d) => isDocumentReady(d, active)).length;
+function compute(rounds: CaseRound[], lps: Nda[] | null) {
   const totals = roundTotals(rounds).map((t) => ({
     ...t,
     pct: t.target > 0 ? Math.min((t.raised / t.target) * 100, 100) : null,
@@ -29,21 +23,15 @@ function compute(documents: CaseDocument[], rounds: CaseRound[], lps: Nda[] | nu
     .map((r) => r.deadline as string)
     .sort()[0] ?? null;
   const list = lps ?? [];
+  const count = (s: (typeof LP_STATUSES)[number]) => list.filter((l) => l.lp_status === s).length;
   return {
-    done,
-    total: active.length,
     totals,
     deadline: upcoming,
     dleft: daysUntil(upcoming),
     lpCount: list.length,
-    byLp: LP_STATUSES.map((s) => ({
-      label: s,
-      n: list.filter((l) => l.lp_status === s).length,
-    })),
-    byNda: (["Draft", "Sent", "Signed"] as const).map((s) => ({
-      label: s,
-      n: list.filter((l) => l.status === s).length,
-    })),
+    ndaSigned: count("NDA signed"),
+    invested: count("Invested"),
+    list,
     loading: lps === null,
   };
 }
@@ -55,22 +43,23 @@ function deadlineText(dleft: number | null) {
 
 /** Compact dark-glass snapshot shown inside the "Where do we stand?" tile. */
 export function StandingTile({
-  documents,
+  caseData,
   rounds,
   lps,
   showMoney,
 }: {
   caseData: Case;
-  documents: CaseDocument[];
   rounds: CaseRound[];
   lps: Nda[] | null;
   showMoney: boolean;
 }) {
-  const s = compute(documents, rounds, lps);
-  const signed = s.byNda[2].n;
+  const s = compute(rounds, lps);
   const withBar = s.totals.filter((t) => t.pct !== null);
   return (
     <div className="mt-4 space-y-4">
+      <p className="text-xs text-slate-500">
+        Due Diligence · <span className="font-medium text-slate-900">{caseData.dd_stage}</span>
+      </p>
       {showMoney && withBar.length > 0 && (
         <div className="space-y-3">
           {rounds.length > 1 && (
@@ -92,9 +81,9 @@ export function StandingTile({
         </div>
       )}
       <div className="grid grid-cols-3 gap-3 text-center">
-        <Mini label="Documents" value={`${s.done}/${s.total}`} />
-        <Mini label="LPs" value={s.loading ? "…" : String(s.lpCount)} />
-        <Mini label="NDAs signed" value={s.loading ? "…" : String(signed)} />
+        <Mini label="Investors" value={s.loading ? "…" : String(s.lpCount)} />
+        <Mini label="NDA signed" value={s.loading ? "…" : String(s.ndaSigned)} />
+        <Mini label="Invested" value={s.loading ? "…" : String(s.invested)} />
       </div>
       {showMoney && s.deadline && (
         <p className="text-center text-xs text-slate-500">
@@ -119,23 +108,35 @@ function Mini({ label, value }: { label: string; value: string }) {
 /** Full breakdown, shown in the light sheet after tapping the tile. */
 export function StandingDetail({
   caseData,
-  documents,
   rounds,
   lps,
+  sales,
   showMoney,
 }: {
   caseData: Case;
-  documents: CaseDocument[];
   rounds: CaseRound[];
   lps: Nda[] | null;
+  /** The people who can sell: one column each in the investors table. */
+  sales: TeamMember[];
   showMoney: boolean;
 }) {
-  const s = compute(documents, rounds, lps);
+  const s = compute(rounds, lps);
   const cur = currentRound(rounds);
   const multi = rounds.length > 1;
+
+  // Investors by status (rows) and by salesperson (columns); anyone without a listed salesperson goes to "Unassigned".
+  const salesIds = new Set(sales.map((m) => m.id));
+  const unassigned = s.list.filter((l) => !l.sales_id || !salesIds.has(l.sales_id));
+  const columns = [
+    ...sales.map((m) => ({ key: m.id, label: m.name, test: (l: Nda) => l.sales_id === m.id })),
+    ...(unassigned.length > 0
+      ? [{ key: "unassigned", label: "Unassigned", test: (l: Nda) => !l.sales_id || !salesIds.has(l.sales_id) }]
+      : []),
+  ];
+
   return (
     <div className="space-y-6 text-sm">
-      <Row label="Stage" value={caseData.stage} />
+      <Row label="Due Diligence Stage" value={caseData.dd_stage} />
 
       {showMoney && (
         <section className="space-y-3">
@@ -163,44 +164,46 @@ export function StandingDetail({
         </section>
       )}
 
-      <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Documents · {s.done}/{s.total} ready{multi && cur ? ` (${cur.name})` : ""}
-        </h3>
-        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-slate-900"
-            style={{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }}
-          />
-        </div>
-        <ul className="space-y-1">
-          {activeDocuments(documents, rounds).map((d) => (
-            <li key={d.id} className="flex justify-between text-slate-700">
-              <span>{d.type}</span>
-              <span className={isUnreviewed(d) ? "font-medium text-red-600" : "text-slate-500"}>
-                {isUnreviewed(d) ? "Unreviewed" : d.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Investors · {s.loading ? "…" : s.lpCount}
         </h3>
-        {s.byLp.map((x) => (
-          <Row key={x.label} label={x.label} value={String(x.n)} />
-        ))}
-      </section>
-
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          NDAs
-        </h3>
-        {s.byNda.map((x) => (
-          <Row key={x.label} label={x.label} value={String(x.n)} />
-        ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+              <tr>
+                <th className="py-1.5 pr-3 font-medium">Status</th>
+                {columns.map((c) => (
+                  <th key={c.key} className="whitespace-nowrap px-2 py-1.5 text-right font-medium">
+                    {c.label}
+                  </th>
+                ))}
+                <th className="pl-2 py-1.5 text-right font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {LP_STATUSES.map((status) => {
+                const rows = s.list.filter((l) => l.lp_status === status);
+                return (
+                  <tr key={status}>
+                    <td className="py-1.5 pr-3 text-slate-500">{status}</td>
+                    {columns.map((c) => (
+                      <td key={c.key} className="px-2 py-1.5 text-right text-slate-700">
+                        {rows.filter(c.test).length || "–"}
+                      </td>
+                    ))}
+                    <td className="pl-2 py-1.5 text-right font-medium text-slate-900">{rows.length}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {sales.length === 0 && (
+          <p className="text-xs text-slate-400">
+            No salesperson yet: an admin ticks “Can sell” for each of them in Users.
+          </p>
+        )}
       </section>
     </div>
   );

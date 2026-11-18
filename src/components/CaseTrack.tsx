@@ -20,6 +20,7 @@ import NdaSignedFileUpload from "@/components/NdaSignedFileUpload";
 import NdaTemplateUpload from "@/components/NdaTemplateUpload";
 import { ndaMailtoLink } from "@/lib/nda-email";
 import { formatDate } from "@/lib/utils";
+import { TeamMember, loadSales } from "@/lib/tasks";
 
 type TemplateField = "nda_template_company_url" | "nda_template_individual_url";
 
@@ -32,6 +33,7 @@ export default function CaseTrack({
 }) {
   const isAdmin = role === "admin";
   const [lps, setLps] = useState<Nda[] | null>(null);
+  const [sales, setSales] = useState<TeamMember[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -56,9 +58,16 @@ export default function CaseTrack({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
     load();
+    loadSales().then(setSales);
   }, [load]);
 
   async function updateLp(lp: Nda, patch: Partial<Nda>) {
+    // The NDA moving forward moves the investor along the pipeline too (never backwards,
+    // and never once they have invested or declined).
+    if (patch.lp_status === undefined && lp.lp_status !== "Invested" && lp.lp_status !== "Declined") {
+      if (patch.status === "Signed") patch = { ...patch, lp_status: "NDA signed" };
+      else if (patch.status === "Sent" && lp.lp_status === "Contacted") patch = { ...patch, lp_status: "NDA sent" };
+    }
     setLps((prev) =>
       prev ? prev.map((n) => (n.id === lp.id ? { ...n, ...patch } : n)) : prev
     );
@@ -192,6 +201,7 @@ export default function CaseTrack({
               <tr>
                 <th className="px-4 py-3">LP Name</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Sales</th>
                 <th className="px-4 py-3">Tier</th>
                 <th className="px-4 py-3">NDA</th>
               </tr>
@@ -232,6 +242,26 @@ export default function CaseTrack({
                           </select>
                         ) : (
                           <LpStatusBadge status={lp.lp_status} />
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {isAdmin ? (
+                          <select
+                            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
+                            value={lp.sales_id ?? ""}
+                            onChange={(e) => updateLp(lp, { sales_id: e.target.value || null })}
+                          >
+                            <option value="">Nobody</option>
+                            {sales.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-slate-700">
+                            {sales.find((m) => m.id === lp.sales_id)?.name ?? "—"}
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -288,7 +318,7 @@ export default function CaseTrack({
                     </tr>
                     {open && (
                       <tr className="bg-slate-50/60">
-                        <td colSpan={4} className="px-4 py-3">
+                        <td colSpan={5} className="px-4 py-3">
                           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs">
                             <div className="text-slate-500">
                               Signing date: {formatDate(lp.signing_date)}

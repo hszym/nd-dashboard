@@ -18,6 +18,8 @@ export interface Task {
 export interface TeamMember {
   id: string;
   name: string;
+  /** Marked "can sell" in Users: shown as a column of the investors table. */
+  canSell: boolean;
 }
 
 export const TASK_KIND_LABEL: Record<TaskKind, string> = {
@@ -30,12 +32,18 @@ export const TASK_KIND_LABEL: Record<TaskKind, string> = {
 export async function loadTeam(): Promise<TeamMember[]> {
   const { data } = await supabase
     .from("profiles")
-    .select("id, display_name")
+    .select("id, display_name, can_sell")
     .order("display_name");
   return (data ?? []).map((p) => ({
     id: p.id as string,
     name: (p.display_name as string | null)?.trim() || "Unnamed",
+    canSell: Boolean(p.can_sell),
   }));
+}
+
+/** The people who can sell: they are the columns of the investors table. */
+export async function loadSales(): Promise<TeamMember[]> {
+  return (await loadTeam()).filter((m) => m.canSell);
 }
 
 export async function currentUserId(): Promise<string | null> {

@@ -8,6 +8,8 @@ import {
   isRoundDocumentType,
   BrandColor,
   Stage,
+  DdStage,
+  DD_STAGES,
   COMMON_CURRENCIES,
 } from "@/lib/supabase";
 import { slugify } from "@/lib/utils";
@@ -24,6 +26,7 @@ export default function NewCasePage() {
   const [sector, setSector] = useState("");
   const [sponsor, setSponsor] = useState("");
   const [stage, setStage] = useState<Stage>("Under Review");
+  const [ddStage, setDdStage] = useState<DdStage>("Not started");
   const [amountTarget, setAmountTarget] = useState("");
   const [amountRemaining, setAmountRemaining] = useState("");
   const [currency, setCurrency] = useState("EUR");
@@ -72,6 +75,7 @@ export default function NewCasePage() {
         sector: sector.trim() || null,
         sponsor: sponsor.trim() || null,
         stage,
+        dd_stage: ddStage,
         amount_target: amountTarget ? Number(amountTarget) : null,
         amount_remaining: amountRemaining ? Number(amountRemaining) : null,
         currency: currency.trim().toUpperCase() || "EUR",
@@ -134,7 +138,7 @@ export default function NewCasePage() {
           />
         </Field>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Field label="Sector">
             <input
               className="input"
@@ -160,6 +164,17 @@ export default function NewCasePage() {
               <option>Under Review</option>
               <option>Raising</option>
               <option>Completed</option>
+            </select>
+          </Field>
+          <Field label="Due Diligence Stage">
+            <select
+              className="input"
+              value={ddStage}
+              onChange={(e) => setDdStage(e.target.value as DdStage)}
+            >
+              {DD_STAGES.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
             </select>
           </Field>
         </div>

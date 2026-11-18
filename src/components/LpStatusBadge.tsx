@@ -2,7 +2,9 @@ import { LpStatus } from "@/lib/supabase";
 
 const STYLES: Record<LpStatus, string> = {
   Contacted: "bg-slate-100 text-slate-600 ring-slate-500/20",
-  Interested: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  "NDA sent": "bg-sky-50 text-sky-700 ring-sky-600/20",
+  "NDA signed": "bg-violet-50 text-violet-700 ring-violet-600/20",
+  Invested: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   Declined: "bg-red-50 text-red-700 ring-red-600/20",
 };
 

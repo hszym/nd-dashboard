@@ -7,6 +7,8 @@ export interface AdminUserRow {
   email: string | null;
   /** Name shown when a task is assigned (profiles.display_name). */
   display_name: string | null;
+  /** Can be put in charge of investors (one column of the investors table). */
+  can_sell: boolean;
   role: Role;
   created_at: string;
 }

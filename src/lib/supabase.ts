@@ -47,6 +47,7 @@ export interface Case {
   sector: string | null;
   sponsor: string | null;
   stage: Stage;
+  dd_stage: DdStage;
   amount_target: number | null;
   amount_remaining: number | null;
   currency: string;
@@ -193,8 +194,13 @@ export type NdaCounterpartyType = "individual" | "company";
 
 export type NdaStatus = "Draft" | "Sent" | "Signed";
 
-export type LpStatus = "Contacted" | "Interested" | "Declined";
-export const LP_STATUSES: LpStatus[] = ["Contacted", "Interested", "Declined"];
+/** One pipeline status per investor, from first contact to the outcome. */
+export type LpStatus = "Contacted" | "NDA sent" | "NDA signed" | "Invested" | "Declined";
+export const LP_STATUSES: LpStatus[] = ["Contacted", "NDA sent", "NDA signed", "Invested", "Declined"];
+
+/** Where the deal stands on due diligence (not the same as its fundraising stage). */
+export type DdStage = "Not started" | "In progress" | "Completed";
+export const DD_STAGES: DdStage[] = ["Not started", "In progress", "Completed"];
 
 export type Tier = 1 | 2 | 3;
 export const TIERS: { value: Tier; label: string; description: string }[] = [
@@ -247,6 +253,8 @@ export interface Nda {
   status: NdaStatus;
   /** Pipeline stage of the LP relationship. */
   lp_status: LpStatus;
+  /** The salesperson in charge of this investor (an account marked "can sell"). */
+  sales_id: string | null;
   /** LP classification, 1 = institutional. Null until filled. */
   tier: Tier | null;
   signed_file_url: string | null;

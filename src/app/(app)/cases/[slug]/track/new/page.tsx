@@ -7,6 +7,7 @@ import { supabase, Case, LP_STATUSES, LpStatus, Tier, TIERS } from "@/lib/supaba
 import { emptyLpValues, LpValues, lpValuesToRow, validateLp } from "@/lib/lp";
 import LpFields, { LpField, LpSection } from "@/components/LpFields";
 import RequestFromLp from "@/components/RequestFromLp";
+import { TeamMember, loadSales } from "@/lib/tasks";
 
 export default function AddLpPage() {
   const params = useParams<{ slug: string }>();
@@ -17,6 +18,12 @@ export default function AddLpPage() {
   const [values, setValues] = useState<LpValues>(emptyLpValues);
   const [lpStatus, setLpStatus] = useState<LpStatus>("Contacted");
   const [tier, setTier] = useState<Tier | "">("");
+  const [salesId, setSalesId] = useState("");
+  const [sales, setSales] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    loadSales().then(setSales);
+  }, []);
   const [signingPlace, setSigningPlace] = useState("Luxembourg");
   const [signingDate, setSigningDate] = useState(
     () => new Date().toISOString().slice(0, 10)
@@ -64,6 +71,7 @@ export default function AddLpPage() {
         case_id: caseData.id,
         ...lpValuesToRow(values),
         lp_status: lpStatus,
+        sales_id: salesId || null,
         tier,
         signing_place: signingPlace.trim() || "Luxembourg",
         signing_date: signingDate,
@@ -161,6 +169,16 @@ export default function AddLpPage() {
               >
                 {LP_STATUSES.map((s) => (
                   <option key={s}>{s}</option>
+                ))}
+              </select>
+            </LpField>
+            <LpField label="Sales">
+              <select className="input" value={salesId} onChange={(e) => setSalesId(e.target.value)}>
+                <option value="">Nobody yet</option>
+                {sales.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
                 ))}
               </select>
             </LpField>

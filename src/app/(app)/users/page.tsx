@@ -13,6 +13,7 @@ export default function UsersPage() {
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [newCanSell, setNewCanSell] = useState(false);
   const [newRole, setNewRole] = useState<Role>("team");
   const [creating, setCreating] = useState(false);
   const [justCreated, setJustCreated] = useState<{ email: string; temporaryPassword: string; reset?: boolean } | null>(
@@ -44,7 +45,7 @@ export default function UsersPage() {
     const res = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), display_name: name.trim(), role: newRole }),
+      body: JSON.stringify({ email: email.trim(), display_name: name.trim(), role: newRole, can_sell: newCanSell }),
     });
     const body = await res.json();
     setCreating(false);
@@ -55,6 +56,7 @@ export default function UsersPage() {
     setJustCreated(body);
     setEmail("");
     setName("");
+    setNewCanSell(false);
     setNewRole("team");
     load();
   }
@@ -69,6 +71,21 @@ export default function UsersPage() {
     const body = await res.json();
     if (!res.ok) {
       setError(body.error ?? "Could not update role.");
+      return;
+    }
+    load();
+  }
+
+  async function handleCanSell(u: AdminUserRow, value: boolean) {
+    setError(null);
+    const res = await fetch(`/api/admin/users/${u.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ can_sell: value }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      setError(body.error ?? "Could not update.");
       return;
     }
     load();
@@ -202,6 +219,10 @@ export default function UsersPage() {
             <option value="admin">Admin</option>
           </select>
         </label>
+        <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
+          <input type="checkbox" checked={newCanSell} onChange={(e) => setNewCanSell(e.target.checked)} />
+          Can sell
+        </label>
         <button
           type="submit"
           disabled={creating || !email}
@@ -218,6 +239,7 @@ export default function UsersPage() {
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Can sell</th>
               <th className="px-4 py-3">Added</th>
               <th className="px-4 py-3" />
             </tr>
@@ -255,6 +277,14 @@ export default function UsersPage() {
                       <option value="team">Team</option>
                       <option value="admin">Admin</option>
                     </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`${u.email} can sell`}
+                      checked={u.can_sell}
+                      onChange={(e) => handleCanSell(u, e.target.checked)}
+                    />
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {new Date(u.created_at).toLocaleDateString()}

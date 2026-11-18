@@ -5,6 +5,8 @@ import {
   supabase,
   Case,
   CaseRound,
+  DdStage,
+  DD_STAGES,
   Stage,
   COMMON_CURRENCIES,
 } from "@/lib/supabase";
@@ -41,6 +43,7 @@ export default function CaseEditForm({
         sector: draft.sector || null,
         sponsor: draft.sponsor || null,
         stage: draft.stage,
+        dd_stage: draft.dd_stage ?? "Not started",
         onedrive_url: draft.onedrive_url?.trim() || null,
         notes: draft.notes || null,
       })
@@ -97,6 +100,17 @@ export default function CaseEditForm({
             <option>Under Review</option>
             <option>Raising</option>
             <option>Completed</option>
+          </select>
+        </Field>
+        <Field label="Due Diligence Stage">
+          <select
+            className="input"
+            value={draft.dd_stage ?? "Not started"}
+            onChange={(e) => setDraft({ ...draft, dd_stage: e.target.value as DdStage })}
+          >
+            {DD_STAGES.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
           </select>
         </Field>
       </div>
